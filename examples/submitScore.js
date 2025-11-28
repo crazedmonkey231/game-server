@@ -1,7 +1,7 @@
 // examples/submitScore.js
 // Example of how to submit a score to the backend leaderboard API
 
-const BACKEND_URL = "https://mygame-backend.azurewebsites.net"; // change later
+const BACKEND_URL = "https://game-server-ancmexh6bdbkd5ad.eastus-01.azurewebsites.net"; // change later
 const GAME_ID = "cloud-jumper" // or whatever name for each game
 
 async function submitScore(playerName, score) {
