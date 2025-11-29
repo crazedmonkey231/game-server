@@ -31,6 +31,31 @@ class GameManager {
     // Expose player notify endpoint, used for notifying players for upcoming server events
     app.post("/api/gameManager/playerNotify", this.playerNotify.bind(this));
 
+    // Expose endpoint to get number of players in a game
+    app.get("/api/gameManager/playersInGame/:gameId", (req, res) => {
+      const { gameId } = req.params;
+      const game = this.getGameState(gameId);
+      res.json({ playerCount: Object.keys(game.players).length });
+    });
+
+    // Expose endpoint to get number of players in all games
+    app.get("/api/gameManager/playersInAllGames", (req, res) => {
+      let totalPlayers = 0;
+      for (const gameId in this.gameStates) {
+        totalPlayers += Object.keys(this.gameStates[gameId].players).length;
+      }
+      res.json({ playerCount: totalPlayers });
+    });
+
+    // Expose endpoint to get number of players in each game
+    app.get("/api/gameManager/playersInPerGames", (req, res) => {
+      const counts = {};
+      for (const gameId in this.gameStates) {
+        counts[gameId] = Object.keys(this.gameStates[gameId].players).length;
+      }
+      res.json({ playerCounts: counts });
+    });
+
     // Handle socket connections
     io.on("connection", (socket) => {
       const { gameId, roomId, name, score, speed, transform } =
@@ -63,7 +88,7 @@ class GameManager {
       // Add player to game state
       game.players[socket.id] = {
         roomId,
-        name: name || "Anonymous",
+        name: name || `${socket.id}`,
         score: parseInt(score) || 0,
         speed: parseFloat(speed) || 0.01,
         transform: JSON.parse(transform) || {

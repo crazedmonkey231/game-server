@@ -34,6 +34,9 @@ new (require("./GameManager"))(app, io, GAMES);
 // Event Manager module
 new (require("./EventManager"))(app, io, GAMES);
 
+// Profile Manager module
+new (require("./ProfileManager"))(app, io, GAMES);
+
 // Listen debug
 server.listen(PORT, () => {
   console.log(`Game backend listening on http://localhost:${PORT}`);
