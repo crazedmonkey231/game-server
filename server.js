@@ -26,7 +26,7 @@ const GAMES = [
 // -- Modules --
 
 // Leaderboard module
-new (require("./leaderboard"))(app, GAMES);
+new (require("./Leaderboard"))(app, io, GAMES);
 
 // Game Manager module
 new (require("./GameManager"))(app, io, GAMES);

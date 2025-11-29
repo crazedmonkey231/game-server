@@ -10,23 +10,36 @@ const VALID_ROOM_ID = [
   "room5",
 ];
 
+function getRoomName(socket) {
+  return `${socket.data.gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+}
+
 // GameManager handles multiple games and rooms
 class GameManager {
   constructor(app, io, games) {
     this.io = io;
     this.gameStates = {};
     for (const gameId of games) {
-      this.gameStates[gameId] = {
-        players: {},
-      };
+      this.getGameState(gameId);
     }
 
-    // Expose player notify endpoint, used for notifying players for upcoming server events
-    app.post("/api/gameManager/playerNotify", this.playerNotify.bind(this));    
+    // Server tick to update game state
+    this.serverTick = setInterval(() => {
+      io.emit("serverTick");
+    }, 1000 / 30); // 30 times per second
 
+    // Expose player notify endpoint, used for notifying players for upcoming server events
+    app.post("/api/gameManager/playerNotify", this.playerNotify.bind(this));
+
+    // Handle socket connections
     io.on("connection", (socket) => {
-      const { gameId, roomId, name, score, speed, transform } = socket.handshake.query;
-      if (!gameId || !this.gameStates[gameId] || !VALID_ROOM_ID.includes(roomId)) {
+      const { gameId, roomId, name, score, speed, transform } =
+        socket.handshake.query;
+      if (
+        !gameId ||
+        !this.gameStates[gameId] ||
+        !VALID_ROOM_ID.includes(roomId)
+      ) {
         socket.disconnect(true);
         return;
       }
@@ -34,7 +47,7 @@ class GameManager {
       socket.data.gameId = gameId; // store on socket
       socket.data.roomId = roomId; // store on socket
 
-      const roomName = `${gameId}:${ROOM_ID_PREFIX}${roomId}`;
+      const roomName = getRoomName(socket);
       socket.join(roomName); // join that game’s room
 
       console.log(
@@ -64,6 +77,7 @@ class GameManager {
       socket.emit("init", {
         you: socket.id,
         players: game.players,
+        things: game.things,
       });
 
       // Let other players in *this game* know
@@ -74,9 +88,7 @@ class GameManager {
 
       // Handle input for THIS game only
       socket.on("playerInput", (input) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         if (!input) return;
         if (gameId === "default-game") {
@@ -87,7 +99,7 @@ class GameManager {
           if (input.up) playerPos.y += speed;
           if (input.down) playerPos.y -= speed;
           // Broadcast new position to room
-          const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+          const roomName = getRoomName(socket);
           io.to(roomName).emit("playerMoved", {
             id: socket.id,
             position: player.transform.position,
@@ -96,61 +108,202 @@ class GameManager {
       });
 
       socket.on("playerScore", (points) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         player.score += points;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerScored", {
+          id: socket.id,
+          score: player.score,
+        });
       });
 
       socket.on("playerTransform", (transform) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         player.transform = transform;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
-        io.to(roomName).emit("playerTransformed", {id: socket.id, transform: player.transform});
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerTransformed", {
+          id: socket.id,
+          transform: player.transform,
+        });
       });
 
       socket.on("playerPosition", (position) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         player.transform.position = position;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
-        io.to(roomName).emit("playerMoved", {id: socket.id, position: player.transform.position});
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerMoved", {
+          id: socket.id,
+          position: player.transform.position,
+        });
       });
 
       socket.on("playerRotation", (rotation) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         player.transform.rotation = rotation;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
-        io.to(roomName).emit("playerRotated", {id: socket.id, rotation: player.transform.rotation});
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerRotated", {
+          id: socket.id,
+          rotation: player.transform.rotation,
+        });
       });
 
       socket.on("playerScale", (scale) => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const player = game.players[socket.id];
+        const player = this.getPlayer(socket);
         if (!player) return;
         player.transform.scale = scale;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
-        io.to(roomName).emit("playerScaled", {id: socket.id, scale: player.transform.scale});
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerScaled", {
+          id: socket.id,
+          scale: player.transform.scale,
+        });
+      });
+
+      socket.on("playerPositionRotation", ({ position, rotation }) => {
+        const player = this.getPlayer(socket);
+        if (!player) return;
+        player.transform.position = position;
+        player.transform.rotation = rotation;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerMovedRotated", {
+          id: socket.id,
+          position: player.transform.position,
+          rotation: player.transform.rotation,
+        });
+      });
+
+      socket.on("playerPositionScale", ({ position, scale }) => {
+        const player = this.getPlayer(socket);
+        if (!player) return;
+        player.transform.position = position;
+        player.transform.scale = scale;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("playerMovedScaled", {
+          id: socket.id,
+          position: player.transform.position,
+          scale: player.transform.scale,
+        });
+      });
+
+      socket.on(
+        "playerPositionRotationScale",
+        ({ position, rotation, scale }) => {
+          const player = this.getPlayer(socket);
+          if (!player) return;
+          player.transform.position = position;
+          player.transform.rotation = rotation;
+          player.transform.scale = scale;
+          const roomName = getRoomName(socket);
+          io.to(roomName).emit("playerMovedRotatedScaled", {
+            id: socket.id,
+            position: player.transform.position,
+            rotation: player.transform.rotation,
+            scale: player.transform.scale,
+          });
+        }
+      );
+
+      socket.on("spawnThing", (thingData) => {
+        const game = this.getGameState(socket.data.gameId);
+        game.things[thingData.id] = thingData;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingSpawned", thingData);
+      });
+
+      socket.on("despawnThing", (thingId) => {
+        const game = this.getGameState(socket.data.gameId);
+        delete game.things[thingId];
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingDespawned", thingId);
+      });
+
+      socket.on("thingPosition", ({ id, position }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.position = position;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingMoved", { id, position });
+      });
+
+      socket.on("thingRotation", ({ id, rotation }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.rotation = rotation;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingRotated", { id, rotation });
+      });
+
+      socket.on("thingScale", ({ id, scale }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.scale = scale;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingScaled", { id, scale });
+      });
+
+      socket.on("thingPositionRotation", ({ id, position, rotation }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.position = position;
+        transform.rotation = rotation;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingMovedRotated", {
+          id, position, rotation
+        });
+      });
+
+      socket.on("thingPositionScale", ({ id, position, scale }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.position = position;
+        transform.scale = scale;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingMovedScaled", {
+          id, position, scale
+        });
+      });
+
+      socket.on("thingPositionRotationScale", ({ id, position, rotation, scale }) => {
+        const game = this.getGameState(socket.data.gameId);
+        if (!game.things[id]) return;
+        const transform = game.things[id].transform;
+        transform.position = position;
+        transform.rotation = rotation;
+        transform.scale = scale;
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingMovedRotatedScaled", {
+          id, position, rotation, scale
+        });
       });
 
       socket.on("chatMessage", (message) => {
-        const gameId = socket.data.gameId;
-        const roomId = socket.data.roomId;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${roomId}`;
+        const roomName = getRoomName(socket);
         io.to(roomName).emit("chatMessage", {
           from: socket.id,
           message,
         });
+      });
+
+      socket.on("getAllRoomPlayerCount", () => {
+        const gameId = socket.data.gameId;
+        const game = this.getGameState(gameId);
+        const roomCounts = {};
+        for (const roomId of VALID_ROOM_ID) {
+          roomCounts[roomId] = 0;
+        }
+        for (const socketId of Object.keys(game.players)) {
+          const player = game.players[socketId];
+          roomCounts[player.roomId] += 1;
+        }
+        socket.emit("allRoomPlayerCount", roomCounts);
       });
 
       socket.on("playerChangeRoom", (newRoomId) => {
@@ -171,24 +324,9 @@ class GameManager {
         });
       });
 
-      socket.on("getAllRoomPlayerCount", () => {
-        const gameId = socket.data.gameId;
-        const game = this.getGameState(gameId);
-        const roomCounts = {};
-        for (const roomId of VALID_ROOM_ID) {
-          roomCounts[roomId] = 0;
-        }
-        for (const socketId of Object.keys(game.players)) {
-          const player = game.players[socketId];
-          roomCounts[player.roomId] += 1;
-        }
-        socket.emit("allRoomPlayerCount", roomCounts);
-      });
-
       socket.on("disconnect", () => {
         const gameId = socket.data.gameId;
-        const roomId = socket.data.roomId;
-        const roomName = `${gameId}:${ROOM_ID_PREFIX}${roomId}`;
+        const roomName = getRoomName(socket);
         const game = this.getGameState(gameId);
         delete game.players[socket.id];
         io.to(roomName).emit("playerLeft", socket.id);
@@ -196,10 +334,17 @@ class GameManager {
     });
   }
 
+  getPlayer(socket) {
+    const gameId = socket.data.gameId;
+    const game = this.getGameState(gameId);
+    return game.players[socket.id];
+  }
+
   getGameState(gameId) {
     if (!this.gameStates[gameId]) {
       this.gameStates[gameId] = {
         players: {},
+        things: {},
       };
     }
     return this.gameStates[gameId];

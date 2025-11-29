@@ -1,14 +1,15 @@
-// leaderboard.js
+// Leaderboard.js
 // Leaderboard module for game backend
 
 class LeaderBoard {
-  constructor(app, games) {
+  constructor(app, io, games) {
     // In-memory leaderboards
     // { [gameId]: [ { name, score, timestamp } ] }
     this.leaderboard = {};
     for (const gameId of games) {
       this.leaderboard[gameId] = [];
     }
+
     /**
      * POST /api/leaderboard/:gameId/submit
      * body: { name: string, score: number }
@@ -20,6 +21,17 @@ class LeaderBoard {
      * optional query: ?limit=10
      */
     app.get("/api/leaderboard/:gameId", this.getLeaderboardForGame.bind(this));
+
+    // Handle socket connections for leaderboard submissions
+    io.on("submitLeaderboardEntry", (socket) => {
+      const { gameId } = socket.handshake.query;
+      if (!gameId) return;
+      socket.on("submitLeaderboardEntry", (data) => {
+        const { name, score } = data;
+        const { entry, isInTop10 } = this.addLeaderboardEntry(gameId, name, score);
+        socket.emit("leaderboardEntrySubmitted", { entry, isInTop10 });
+      });
+    });
   }
 
   // POST /api/leaderboard/:gameId/submit
@@ -34,22 +46,23 @@ class LeaderBoard {
       return res.status(400).json({ error: "Invalid name or score" });
     }
 
+    const { entry, isInTop10 } = this.addLeaderboardEntry(gameId, name, score);
+    res.json({ success: true, entry, isInTop10 });
+  }
+
+  addLeaderboardEntry(gameId, name, score) {
+    const entry = { name, score, timestamp: Date.now() };
+    let isInTop10 = false;
     const lb = this.getLeaderboard(gameId);
-    lb.push({
-      name: name.trim().slice(0, 20), // simple safety
-      score,
-      timestamp: Date.now(),
-    });
-
-    // Sort descending by score
+    lb.push(entry);
     lb.sort((a, b) => b.score - a.score);
-
-    // Keep only top N (e.g. 10)
+    if (lb.indexOf(entry) < 10) {
+      isInTop10 = true;
+    }
     if (lb.length > 10) {
       lb.length = 10;
     }
-
-    res.json({ success: true });
+    return entry, isInTop10;
   }
 
   // GET /api/leaderboard/:gameId
