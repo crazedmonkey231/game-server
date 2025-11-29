@@ -1,4 +1,4 @@
-const GAMES = ["default-game"];
+// GameManager module for handling multiple games and rooms
 const ROOM_ID_PREFIX = "room-";
 const VALID_ROOM_ID = [
   "sandbox",
@@ -12,12 +12,21 @@ const VALID_ROOM_ID = [
 
 // GameManager handles multiple games and rooms
 class GameManager {
-  constructor(io) {
+  constructor(app, io, games) {
+    this.io = io;
     this.gameStates = {};
+    for (const gameId of games) {
+      this.gameStates[gameId] = {
+        players: {},
+      };
+    }
+
+    // Expose player notify endpoint, used for notifying players for upcoming server events
+    app.post("/api/gameManager/playerNotify", this.playerNotify.bind(this));    
 
     io.on("connection", (socket) => {
       const { gameId, roomId, name, score, speed, transform } = socket.handshake.query;
-      if (!GAMES.includes(gameId) || !VALID_ROOM_ID.includes(roomId)) {
+      if (!gameId || !this.gameStates[gameId] || !VALID_ROOM_ID.includes(roomId)) {
         socket.disconnect(true);
         return;
       }
@@ -194,6 +203,13 @@ class GameManager {
       };
     }
     return this.gameStates[gameId];
+  }
+
+  playerNotify(req, res) {
+    const { message } = req.body;
+    console.log("Player Notify:", message);
+    this.io.emit("playerNotify", { message });
+    res.json({ success: true });
   }
 }
 

@@ -2,10 +2,13 @@
 // Leaderboard module for game backend
 
 class LeaderBoard {
-  constructor(app) {
+  constructor(app, games) {
     // In-memory leaderboards
     // { [gameId]: [ { name, score, timestamp } ] }
     this.leaderboard = {};
+    for (const gameId of games) {
+      this.leaderboard[gameId] = [];
+    }
     /**
      * POST /api/leaderboard/:gameId/submit
      * body: { name: string, score: number }
@@ -22,6 +25,9 @@ class LeaderBoard {
   // POST /api/leaderboard/:gameId/submit
   submit(req, res) {
     const { gameId } = req.params;
+    if (!this.leaderboard[gameId]) {
+      return res.status(400).json({ error: "Invalid gameId" });
+    }
     const { name, score } = req.body;
 
     if (typeof name !== "string" || typeof score !== "number") {
