@@ -2,10 +2,10 @@
 // Leaderboard module for game backend
 
 class LeaderBoard {
-  // In-memory leaderboards
-  // { [gameId]: [ { name, score, timestamp } ] }
-  leaderboard = {};
   constructor(app) {
+    // In-memory leaderboards
+    // { [gameId]: [ { name, score, timestamp } ] }
+    this.leaderboard = {};
     /**
      * POST /api/leaderboard/:gameId/submit
      * body: { name: string, score: number }
