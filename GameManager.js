@@ -16,7 +16,7 @@ class GameManager {
     this.gameStates = {};
 
     io.on("connection", (socket) => {
-      const { gameId, roomId, name, score, transform } = socket.handshake.query;
+      const { gameId, roomId, name, score, speed, transform } = socket.handshake.query;
       if (!GAMES.includes(gameId) || !VALID_ROOM_ID.includes(roomId)) {
         socket.disconnect(true);
         return;
@@ -43,7 +43,8 @@ class GameManager {
         roomId,
         name: name || "Anonymous",
         score: parseInt(score) || 0,
-        transform: transform || {
+        speed: parseFloat(speed) || 0.01,
+        transform: JSON.parse(transform) || {
           position: { x: 0, y: 0, z: 0 },
           rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
           scale: { x: 1, y: 1, z: 1 },
@@ -70,12 +71,18 @@ class GameManager {
         if (!player) return;
         if (!input) return;
         if (gameId === "default-game") {
-          const speed = 5;
+          const speed = player.speed;
           const playerPos = player.transform.position;
           if (input.left) playerPos.x -= speed;
           if (input.right) playerPos.x += speed;
-          if (input.up) playerPos.y -= speed;
-          if (input.down) playerPos.y += speed;
+          if (input.up) playerPos.y += speed;
+          if (input.down) playerPos.y -= speed;
+          // Broadcast new position to room
+          const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+          io.to(roomName).emit("playerMoved", {
+            id: socket.id,
+            position: player.transform.position,
+          });
         }
       });
 
@@ -93,6 +100,8 @@ class GameManager {
         const player = game.players[socket.id];
         if (!player) return;
         player.transform = transform;
+        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+        io.to(roomName).emit("playerTransformed", {id: socket.id, transform: player.transform});
       });
 
       socket.on("playerPosition", (position) => {
@@ -101,6 +110,8 @@ class GameManager {
         const player = game.players[socket.id];
         if (!player) return;
         player.transform.position = position;
+        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+        io.to(roomName).emit("playerMoved", {id: socket.id, position: player.transform.position});
       });
 
       socket.on("playerRotation", (rotation) => {
@@ -109,6 +120,8 @@ class GameManager {
         const player = game.players[socket.id];
         if (!player) return;
         player.transform.rotation = rotation;
+        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+        io.to(roomName).emit("playerRotated", {id: socket.id, rotation: player.transform.rotation});
       });
 
       socket.on("playerScale", (scale) => {
@@ -117,6 +130,8 @@ class GameManager {
         const player = game.players[socket.id];
         if (!player) return;
         player.transform.scale = scale;
+        const roomName = `${gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
+        io.to(roomName).emit("playerScaled", {id: socket.id, scale: player.transform.scale});
       });
 
       socket.on("chatMessage", (message) => {
@@ -170,40 +185,6 @@ class GameManager {
         io.to(roomName).emit("playerLeft", socket.id);
       });
     });
-
-    // Game loop update to broadcast state every 100ms
-    setInterval(() => {
-      // Clean up empty games
-      for (const gameId of Object.keys(this.gameStates)) {
-        const game = this.gameStates[gameId];
-        if (Object.keys(game.players).length === 0) {
-          delete this.gameStates[gameId];
-        }
-      }
-      // Get updates per game and room
-      for (const gameId of Object.keys(this.gameStates)) {
-        const game = this.gameStates[gameId];
-        const rooms = {};
-        // Organize players by their rooms
-        for (const socketId of Object.keys(game.players)) {
-          const player = game.players[socketId];
-          const roomName = `${gameId}:${ROOM_ID_PREFIX}${player.roomId}`;
-          if (!rooms[roomName]) {
-            rooms[roomName] = new Set();
-          }
-          rooms[roomName].add(socketId);
-        }
-        // Broadcast updates per room
-        for (const roomName of Object.keys(rooms)) {
-          io.to(roomName).emit("update", {
-            players: Array.from(rooms[roomName]).reduce((obj, socketId) => {
-              obj[socketId] = game.players[socketId];
-              return obj;
-            }, {}),
-          });
-        }
-      }
-    }, 100);
   }
 
   getGameState(gameId) {
