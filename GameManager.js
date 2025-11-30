@@ -233,6 +233,8 @@ class GameManager {
         }
       );
 
+      // -- Thing management --
+
       socket.on("spawnThing", (thingData) => {
         const game = this.getGameState(socket.data.gameId);
         game.things[thingData.id] = thingData;
@@ -245,6 +247,27 @@ class GameManager {
         delete game.things[thingId];
         const roomName = getRoomName(socket);
         io.to(roomName).emit("thingDespawned", thingId);
+      });
+
+      socket.on("killThing", (thingId) => {
+        const game = this.getGameState(socket.data.gameId);
+        delete game.things[thingId];
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingKilled", thingId);
+      });
+
+      socket.on("disposeThing", (thingId) => {
+        const game = this.getGameState(socket.data.gameId);
+        delete game.things[thingId];
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("thingDisposed", thingId);
+      });
+
+      socket.on("clearAllThings", () => {
+        const game = this.getGameState(socket.data.gameId);
+        game.things = {};
+        const roomName = getRoomName(socket);
+        io.to(roomName).emit("allThingsCleared");
       });
 
       socket.on("thingPosition", ({ id, position }) => {
