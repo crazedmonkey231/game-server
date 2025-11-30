@@ -121,6 +121,8 @@ class GameManager {
           const playerPos = player.transform.position;
           if (input.left) playerPos.x -= speed;
           if (input.right) playerPos.x += speed;
+          if (input.forward) playerPos.z -= speed;
+          if (input.backward) playerPos.z += speed;
           if (input.up) playerPos.y += speed;
           if (input.down) playerPos.y -= speed;
           // Broadcast new position to room
