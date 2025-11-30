@@ -41,6 +41,17 @@ class EventManager {
           }
           this.makeEvent(io, gameId, "double-xp-weekend", 72 * 60 * 60 * 1000, { title: "Double XP Weekend", xpBonus: 2 }); // 3 days, double xp weekends
         }
+      } else {
+        // Remove double XP weekend events if not weekend
+        for (const gameId of Object.keys(this.events)) {
+          this.events[gameId] = this.events[gameId].filter(event => {
+            if (event.type === "double-xp-weekend") {
+              io.emit("eventEnded", { gameId, type: event.type });
+              return false; // remove
+            }
+            return true; // keep
+          });
+        }
       }
       if (Object.keys(this.events).length === 0) return;
       const now = Date.now();
