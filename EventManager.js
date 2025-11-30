@@ -36,6 +36,9 @@ class EventManager {
       if (this.isWeekend()) {
         // Double XP weekend event
         for (const gameId of Object.keys(this.events)) {
+          if (this.events[gameId].some(event => event.type === "double-xp-weekend")) {
+            continue; // already active
+          }
           this.makeEvent(io, gameId, "double-xp-weekend", 72 * 60 * 60 * 1000, { title: "Double XP Weekend", xpBonus: 2 }); // 3 days, double xp weekends
         }
       }
