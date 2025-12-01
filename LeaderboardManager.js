@@ -6,7 +6,7 @@ class LeaderBoard {
     // In-memory leaderboards
     // { [gameId]: [ { name, score, timestamp } ] }
     this.leaderboard = {};
-    for (const gameId of games) {
+    for (const gameId in games) {
       this.leaderboard[gameId] = [];
     }
 

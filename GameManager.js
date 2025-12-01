@@ -15,13 +15,20 @@ class GameManager {
   constructor(app, io, games) {
     this.io = io;
     this.gameStates = {};
-    for (const gameId of games) {
+    this.gameInstances = {};
+    for (const gameId in games) {
       this.getGameState(gameId);
+      this.gameInstances[gameId] = new games[gameId]();
     }
 
     // Server tick to update game state
     this.serverTick = setInterval(() => {
       io.emit("serverTick", { timestamp: Date.now() });
+      for (const gameId in this.gameStates) {
+        for (const roomId in this.gameStates[gameId]) {
+          this.update(io, gameId, roomId);
+        }
+      }
     }, 1000 / 30); // 30 times per second
 
     // Expose player notify endpoint, used for notifying players for upcoming server events
@@ -73,10 +80,6 @@ class GameManager {
 
       socket.join(roomName); // join that game’s room
 
-      console.log(
-        `Socket ${socket.id} joined game ${gameId}, room ${roomName}`
-      );
-
       // Add player to game state
       const player = {
         roomId,
@@ -85,6 +88,7 @@ class GameManager {
         score: parseInt(score) || 0,
         speed: parseFloat(speed) || 0.01,
         type: "BasicBoxThing",
+        gameplayTags: ["player"],
         transform: JSON.parse(transform) || {
           position: { x: 0, y: 0, z: 0 },
           rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
@@ -98,7 +102,7 @@ class GameManager {
         you: socket.id,
         things: game.things,
       });
-      
+
       // Notify others in the room about the new player
       socket.to(roomName).emit("playerJoined", {
         player: player,
@@ -109,18 +113,10 @@ class GameManager {
       socket.on("playerInput", (input) => {
         const player = this.getPlayer(socket);
         if (!player) return;
-        if (gameId === "default-game") {
-          const speed = player.speed;
-          const playerPos = player.transform.position;
-          if (input.left) playerPos.x -= speed;
-          if (input.right) playerPos.x += speed;
-          if (input.forward) playerPos.z -= speed;
-          if (input.backward) playerPos.z += speed;
-          if (input.up) playerPos.y += speed;
-          if (input.down) playerPos.y -= speed;
-          // Broadcast new position to room
-          this.updateThingTransform(socket, socket.id, { position: playerPos });
-        }
+        this.gameInstances[gameId].playerInput(player, input);
+        this.updateThingTransform(socket, socket.id, {
+          position: player.transform.position,
+        });
       });
 
       socket.on("playerScore", (points) => {
@@ -182,6 +178,29 @@ class GameManager {
         }
       );
 
+      socket.on("setVelocity", ({ id, velocity }) => {
+        const thing = this.getThing(gameId, roomId, id);
+        if (!thing) return;
+        thing.velocity = velocity;
+      });
+
+      socket.on("setSpeed", ({ id, speed }) => {
+        const thing = this.getThing(gameId, roomId, id);
+        if (!thing) return;
+        thing.speed = speed;
+      });
+
+      socket.on("setThingData", ({ id, data }) => {
+        const thing = this.getThing(gameId, roomId, id);
+        if (!thing) return;
+        for (const key in data) {
+          thing.data = thing.data || {};
+          thing.data[key] = data[key];
+        }
+      });
+
+      // -- Chat and room management --
+
       socket.on("chatMessage", (message) => {
         io.to(roomName).emit("chatMessage", {
           from: socket.id,
@@ -227,6 +246,24 @@ class GameManager {
         io.to(roomName).emit("playerLeft", socket.id);
       });
     });
+  }
+
+  async update(io, gameId, roomId) {
+    const game = this.gameStates[gameId][roomId];
+    // check if there are players in the game
+    const playerCount = Object.values(game.things).filter((thing) =>
+      thing.gameplayTags?.includes("player")
+    ).length;
+    // Remove empty games to save memory
+    if (playerCount === 0 && !this.gameInstances[gameId].isPersistent) {
+      delete this.gameStates[gameId][roomId];
+      return;
+    }
+    const newState = [];
+    this.gameInstances[gameId].update(game, newState);
+    if (newState.length > 0) {
+      io.to(game.roomName).emit("serverUpdate", { things: newState });
+    }
   }
 
   /**

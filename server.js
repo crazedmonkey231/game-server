@@ -19,9 +19,9 @@ app.use(express.json());      // parse JSON bodies
 
 // -- Registered Games --
 
-const GAMES = [
-  "default-game"
-];
+const GAMES = {
+  "default-game": require("./games/defaultGame"),
+}
 
 // -- Modules --
 

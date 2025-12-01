@@ -10,7 +10,7 @@ class EventManager {
     // In-memory events
     // { [gameId]: [ { type, data, timestamp } ] }
     this.events = {};
-    for (const gameId of games) {
+    for (const gameId in games) {
       this.events[gameId] = [];
     }
 
