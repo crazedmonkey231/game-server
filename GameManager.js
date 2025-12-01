@@ -10,10 +10,6 @@ const VALID_ROOM_ID = [
   "room5",
 ];
 
-function getRoomName(socket) {
-  return `${socket.data.gameId}:${ROOM_ID_PREFIX}${socket.data.roomId}`;
-}
-
 // GameManager handles multiple games and rooms
 class GameManager {
   constructor(app, io, games) {
@@ -25,7 +21,7 @@ class GameManager {
 
     // Server tick to update game state
     this.serverTick = setInterval(() => {
-      io.emit("serverTick");
+      io.emit("serverTick", { timestamp: Date.now() });
     }, 1000 / 30); // 30 times per second
 
     // Expose player notify endpoint, used for notifying players for upcoming server events
@@ -102,6 +98,12 @@ class GameManager {
         you: socket.id,
         things: game.things,
       });
+      
+      // Notify others in the room about the new player
+      socket.to(roomName).emit("playerJoined", {
+        player: player,
+        things: game.things,
+      });
 
       // Handle input for THIS game only
       socket.on("playerInput", (input) => {
@@ -117,10 +119,7 @@ class GameManager {
           if (input.up) playerPos.y += speed;
           if (input.down) playerPos.y -= speed;
           // Broadcast new position to room
-          io.to(roomName).emit("thingMoved", {
-            id: socket.id,
-            position: player.transform.position,
-          });
+          this.updateThingTransform(socket, socket.id, { position: playerPos });
         }
       });
 
