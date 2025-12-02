@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const path = require("path");
 const { Server } = require("socket.io");
 
 // Create Express app and HTTP server
@@ -17,6 +18,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());              // allow cross-origin requests (e.g., from itch.io)
 app.use(express.json());      // parse JSON bodies
 
+// -- Serve static files (client) from /public
+app.use(express.static(path.join(__dirname, "./public")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "./public/index.html"));
+});
 // -- Registered Games --
 
 const GAMES = {

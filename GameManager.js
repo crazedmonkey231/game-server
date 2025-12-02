@@ -12,20 +12,24 @@ const VALID_ROOM_ID = [
 
 // GameManager handles multiple games and rooms
 class GameManager {
+  static gameStates = {};
+  static gameInstances = {};
   constructor(app, io, games) {
     this.io = io;
-    this.gameStates = {};
-    this.gameInstances = {};
     for (const gameId in games) {
-      this.getGameState(gameId);
-      this.gameInstances[gameId] = new games[gameId]();
+      if (!GameManager.gameStates[gameId]){
+        this.getGameState(gameId);
+      }
+      if (!GameManager.gameInstances[gameId]){
+        GameManager.gameInstances[gameId] = new games[gameId]();
+      }
     }
 
     // Server tick to update game state
     this.serverTick = setInterval(() => {
       io.emit("serverTick", { timestamp: Date.now() });
-      for (const gameId in this.gameStates) {
-        for (const roomId in this.gameStates[gameId]) {
+      for (const gameId in GameManager.gameStates) {
+        for (const roomId in GameManager.gameStates[gameId]) {
           this.update(io, gameId, roomId);
         }
       }
@@ -44,8 +48,8 @@ class GameManager {
     // Expose endpoint to get number of players in all games
     app.get("/api/gameManager/playersInAllGames", (req, res) => {
       let totalPlayers = 0;
-      for (const gameId in this.gameStates) {
-        totalPlayers += Object.keys(this.gameStates[gameId].players).length;
+      for (const gameId in GameManager.gameStates) {
+        totalPlayers += Object.keys(GameManager.gameStates[gameId].players).length;
       }
       res.json({ playerCount: totalPlayers });
     });
@@ -53,19 +57,19 @@ class GameManager {
     // Expose endpoint to get number of players in each game
     app.get("/api/gameManager/playersInPerGames", (req, res) => {
       const counts = {};
-      for (const gameId in this.gameStates) {
-        counts[gameId] = Object.keys(this.gameStates[gameId].players).length;
+      for (const gameId in GameManager.gameStates) {
+        counts[gameId] = Object.keys(GameManager.gameStates[gameId].players).length;
       }
       res.json({ playerCounts: counts });
     });
 
     // Handle socket connections
     io.on("connection", (socket) => {
-      const { gameId, roomId, name, score, speed, transform } =
+      const { gameId, roomId, name, transform } =
         socket.handshake.query;
       if (
         !gameId ||
-        !this.gameStates[gameId] ||
+        !GameManager.gameStates[gameId] ||
         !VALID_ROOM_ID.includes(roomId)
       ) {
         socket.disconnect(true);
@@ -85,8 +89,8 @@ class GameManager {
         roomId,
         id: socket.id,
         name: name || `${socket.id}`,
-        score: parseInt(score) || 0,
-        speed: parseFloat(speed) || 0.01,
+        score: 0,
+        speed: 0.3,
         type: "BasicBoxThing",
         gameplayTags: ["player"],
         transform: JSON.parse(transform) || {
@@ -113,7 +117,7 @@ class GameManager {
       socket.on("playerInput", (input) => {
         const player = this.getPlayer(socket);
         if (!player) return;
-        this.gameInstances[gameId].playerInput(player, input);
+        GameManager.gameInstances[gameId].playerInput(player, input);
         this.updateThingTransform(socket, socket.id, {
           position: player.transform.position,
         });
@@ -141,9 +145,34 @@ class GameManager {
         io.to(roomName).emit("thingAdded", thingData);
       });
 
+      socket.on("respawnThing", (thingId) => {
+        const thing = game.cache[thingId];
+        if (!thing) return;
+        game.things[thingId] = thing;
+        delete game.cache[thingId];
+        io.to(roomName).emit("thingAdded", thing);
+      });
+
       socket.on("removeThing", (thingId) => {
+        const thing = game.things[thingId];
+        if (!thing) return;
         delete game.things[thingId];
+        game.cache[thingId] = thing;
         io.to(roomName).emit("thingRemoved", thingId);
+      });
+
+      socket.on("disposeThing", (thingId) => {
+        let disposed = false;
+        if (game.cache[thingId]) {
+          delete game.cache[thingId];
+          disposed = true;
+        }
+        if (game.things[thingId]) {
+          delete game.things[thingId];
+          disposed = true;
+        }
+        if (!disposed) return;
+        io.to(roomName).emit("thingDisposed", thingId);
       });
 
       socket.on("clearAllThings", () => {
@@ -249,18 +278,18 @@ class GameManager {
   }
 
   async update(io, gameId, roomId) {
-    const game = this.gameStates[gameId][roomId];
+    const game = GameManager.gameStates[gameId][roomId];
     // check if there are players in the game
     const playerCount = Object.values(game.things).filter((thing) =>
       thing.gameplayTags?.includes("player")
     ).length;
     // Remove empty games to save memory
-    if (playerCount === 0 && !this.gameInstances[gameId].isPersistent) {
-      delete this.gameStates[gameId][roomId];
+    if (playerCount === 0 && !GameManager.gameInstances[gameId].isPersistent) {
+      delete GameManager.gameStates[gameId][roomId];
       return;
     }
     const newState = [];
-    this.gameInstances[gameId].update(game, newState);
+    GameManager.gameInstances[gameId].update(game, newState);
     if (newState.length > 0) {
       io.to(game.roomName).emit("serverUpdate", { things: newState });
     }
@@ -331,16 +360,21 @@ class GameManager {
   }
 
   getGameState(gameId, roomId) {
-    if (!this.gameStates[gameId]) {
-      this.gameStates[gameId] = {};
+    if (!GameManager.gameStates[gameId]) {
+      GameManager.gameStates[gameId] = {};
     }
-    if (!this.gameStates[gameId][roomId]) {
-      this.gameStates[gameId][roomId] = {
+    if (!GameManager.gameStates[gameId][roomId]) {
+      GameManager.gameStates[gameId][roomId] = {
         roomName: `${gameId}:${ROOM_ID_PREFIX}${roomId}`,
+        cache: {},
         things: {},
       };
     }
-    return this.gameStates[gameId][roomId];
+    return GameManager.gameStates[gameId][roomId];
+  }
+
+  getGameInstance(gameId) {
+    return GameManager.gameInstances[gameId];
   }
 
   playerNotify(req, res) {

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Server Login</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      .login-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>OrbitWorks</h2>
+      <input type="text" id="username" placeholder="Enter your username" />
+      <input type="text" id="socketId" placeholder="Enter your socket ID" />
+      <button onclick="login()">Login</button>
+    </div>
+
+    <script>
+      async function login() {
+        const BACKEND_URL = window.location.origin;
+        const username = document.getElementById("username").value;
+        const socketId = document.getElementById("socketId").value;
+        if (username && socketId) {
+          const res = await fetch(`${BACKEND_URL}/api/profile/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ socketId, username }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("Login successful!");
+            document.getElementById("username").value = "";
+            document.getElementById("socketId").value = "";
+            // Remove login form
+            document.querySelector(".login-container").remove();
+          } else {
+            alert("Login failed: " + data.message);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

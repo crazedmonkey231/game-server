@@ -31,6 +31,7 @@ class DefaultGame {
       const data = thing.data || {};
       const onGround = data?.onGround || false;
       const bodyType = data?.bodyType || "dynamic";
+      const dirty = data?.dirty || false;
 
       if (bodyType !== "dynamic") {
         continue; // only update dynamic bodies
@@ -49,7 +50,6 @@ class DefaultGame {
           speed = 0.2; // max speed
         }
       }
-      thing.velocity = velocity;
 
       // Prevent falling below ground
       if (position.y < 0) {
@@ -57,7 +57,7 @@ class DefaultGame {
         velocity.y = 0;
       }
 
-      if (velocity.x === 0 && velocity.y === 0 && velocity.z === 0) {
+      if (velocity.x === 0 && velocity.y === 0 && velocity.z === 0 || dirty) {
         continue; // no movement
       }
 
@@ -66,6 +66,9 @@ class DefaultGame {
       velocity.y = roundToTwo(velocity.y);
       velocity.z = roundToTwo(velocity.z);
 
+      thing.velocity = velocity;
+      thing.speed = speed;
+      
       // Simple movement update
       position.x += velocity.x * speed;
       position.y += velocity.y * speed;
@@ -75,12 +78,18 @@ class DefaultGame {
       position.y = roundToTwo(position.y);
       position.z = roundToTwo(position.z);
 
-      outState.push({
+      const outThing = {
         id: thingId,
         position: { ...position },
         velocity: { ...velocity },
         speed: speed,
-      });
+      }
+
+      if (dirty) {
+        outThing.data = { ...data, dirty: false };
+      }
+
+      outState.push(outThing);
     }
   }
 }

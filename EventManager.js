@@ -2,16 +2,10 @@
 // EventManager module for game backend, handling in-game events like double XP weekends, special challenges, etc.
 
 class EventManager {
+  static events = {};
   constructor(app, io, games) {
     if (!io) {
       throw new Error("EventManager requires Socket.IO instance");
-    }
-
-    // In-memory events
-    // { [gameId]: [ { type, data, timestamp } ] }
-    this.events = {};
-    for (const gameId in games) {
-      this.events[gameId] = [];
     }
 
     // Expose trigger event endpoint
@@ -35,16 +29,16 @@ class EventManager {
     this.timerHandle = setInterval(() => {
       if (this.isWeekend()) {
         // Double XP weekend event
-        for (const gameId of Object.keys(this.events)) {
-          if (this.events[gameId].some(event => event.type === "double-xp-weekend")) {
+        for (const gameId of Object.keys(EventManager.events)) {
+          if (EventManager.events[gameId].some(event => event.type === "double-xp-weekend")) {
             continue; // already active
           }
           this.makeEvent(io, gameId, "double-xp-weekend", 72 * 60 * 60 * 1000, { title: "Double XP Weekend", xpBonus: 2 }); // 3 days, double xp weekends
         }
       } else {
         // Remove double XP weekend events if not weekend
-        for (const gameId of Object.keys(this.events)) {
-          this.events[gameId] = this.events[gameId].filter(event => {
+        for (const gameId of Object.keys(EventManager.events)) {
+          EventManager.events[gameId] = EventManager.events[gameId].filter(event => {
             if (event.type === "double-xp-weekend") {
               io.emit("eventEnded", { gameId, type: event.type });
               return false; // remove
@@ -53,10 +47,10 @@ class EventManager {
           });
         }
       }
-      if (Object.keys(this.events).length === 0) return;
+      if (Object.keys(EventManager.events).length === 0) return;
       const now = Date.now();
-      for (const gameId in this.events) {
-        this.events[gameId] = this.events[gameId].filter(event => {
+      for (const gameId in EventManager.events) {
+        EventManager.events[gameId] = EventManager.events[gameId].filter(event => {
           if (event.length > 0 && now - event.timestamp >= event.length) {
             // Event expired
             io.emit("eventEnded", { gameId, type: event.type });
@@ -85,10 +79,10 @@ class EventManager {
   }
 
   makeEvent(io, gameId, type, length, data) {
-    if (!this.events[gameId]) {
-      this.events[gameId] = [];
+    if (!EventManager.events[gameId]) {
+      EventManager.events[gameId] = [];
     }
-    this.events[gameId].push({
+    EventManager.events[gameId].push({
       type,
       data: data || {},
       timestamp: Date.now(),
@@ -100,7 +94,7 @@ class EventManager {
   }
 
   getEventsForGame(gameId) {
-    return this.events[gameId] || [];
+    return EventManager.events[gameId] || [];
   }
 }
 
