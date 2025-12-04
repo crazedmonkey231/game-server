@@ -136,7 +136,12 @@
         const res = await fetch(`${BACKEND_URL}/api/profile/globalStats`);
         const data = await res.json();
         document.getElementById("global-gold").innerText = data.globalCredits;
-        document.getElementById("global-playtime").innerText = data.globalPlayTime;
+
+        const playTime = data.globalPlayTime; // in seconds
+        const hours = Math.floor(data.globalPlayTime / 3600);
+        const minutes = Math.floor((data.globalPlayTime % 3600) / 60);
+        const playtimeformatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        document.getElementById("global-playtime").innerText = `${playtimeformatted}`;
 
         const res2 = await fetch(`${BACKEND_URL}/api/gameManager/summary`);
         const data2 = await res2.json();
