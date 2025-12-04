@@ -3,28 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Game Server Login</title>
+    <title>OrbitWorks</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f2f5;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         height: 100vh;
+        margin: 0;
+        padding: 20px;
       }
       .login-container {
         background-color: white;
         padding: 20px;
         border-radius: 5px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        width: 300px;
+        margin-top: 5px;
+        align-items: center;
+        align-self: flex-start;
       }
       input[type="text"] {
         width: 100%;
-        padding: 10px;
-        margin: 10px 0;
         border: 1px solid #ccc;
         border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
       }
       button {
         width: 100%;
@@ -38,16 +48,63 @@
       button:hover {
         background-color: #218838;
       }
+      .toolbar-container {
+        background-color: #343a40;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        color: white;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: space-between;
+      }
+      .toolbar-title {
+        margin: 0;
+        display: inline-block;
+        font-size: 32px;
+        margin-right: 20px;
+        vertical-align: middle;
+        font-family: 'Segoe UI';
+        font-weight: bold;
+        letter-spacing: 2px;
+        user-select: none;
+        padding: 5px 10px;
+      }
+      .toolbar-button {
+        background-color: #007bff;
+        border: none;
+        color: white;
+        padding: 10px 15px;
+        margin: 0 5px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 16px;
+      }
     </style>
   </head>
   <body>
+    <div class="toolbar-container">
+      <h1 class="toolbar-title">OrbitWorks</h1>
+      <!-- Toolbar content can go here -->
+      <!-- <button class="toolbar-button">Home</button>
+      <button class="toolbar-button">Profile</button>
+      <button class="toolbar-button">Settings</button> -->
+    </div>
     <div class="login-container">
-      <h2>OrbitWorks</h2>
       <input type="text" id="username" placeholder="Enter your username" />
       <input type="text" id="socketId" placeholder="Enter your socket ID" />
       <button onclick="login()">Login</button>
     </div>
-
+    <div class="server-statistics">
+      <!-- Server statistics will be displayed here -->
+      <h2>Players Online: <span id="players-online">0</span></h2>
+      <h2>Active Games: <span id="active-games">0</span></h2>
+      <h2>Global Gold: <span id="global-gold">0</span></h2>
+      <h2>Global Playtime: <span id="global-playtime">0</span></h2>
+    </div>
     <script>
       async function login() {
         const BACKEND_URL = window.location.origin;
@@ -67,12 +124,29 @@
             document.getElementById("username").value = "";
             document.getElementById("socketId").value = "";
             // Remove login form
-            document.querySelector(".login-container").remove();
+            // document.querySelector(".login-container").remove();
           } else {
             alert("Login failed: " + data.message);
           }
         }
       }
+      // Function to fetch and update server statistics
+      async function fetchServerStatistics() {
+        const BACKEND_URL = window.location.origin;
+        const res = await fetch(`${BACKEND_URL}/api/profile/globalStats`);
+        const data = await res.json();
+        document.getElementById("global-gold").innerText = data.globalCredits;
+        document.getElementById("global-playtime").innerText = data.globalPlayTime;
+
+        const res2 = await fetch(`${BACKEND_URL}/api/gameManager/summary`);
+        const data2 = await res2.json();
+        document.getElementById("players-online").innerText = data2.totalPlayers;
+        document.getElementById("active-games").innerText = data2.activeGames;
+      }
+      // Fetch server statistics every 5 seconds
+      setInterval(fetchServerStatistics, 5000);
+      // Initial fetch
+      fetchServerStatistics();
     </script>
   </body>
 </html>

@@ -58,9 +58,34 @@ class GameManager {
     app.get("/api/gameManager/playersInPerGames", (req, res) => {
       const counts = {};
       for (const gameId in GameManager.gameStates) {
-        counts[gameId] = Object.keys(GameManager.gameStates[gameId].players).length;
+        const rooms = Object.keys(GameManager.gameStates[gameId]);
+        counts[gameId] = 0;
+        for (const roomId of rooms) {
+          counts[gameId] += Object.keys(
+            GameManager.gameStates[gameId][roomId].players
+          ).length;
+        }
       }
       res.json({ playerCounts: counts });
+    });
+
+    // Expose endpoint to get total players and active game count
+    app.get("/api/gameManager/summary", (req, res) => {
+      let totalPlayers = 0;
+      let activeGames = 0;
+      for (const gameId in GameManager.gameStates) {
+        const rooms = Object.keys(GameManager.gameStates[gameId]);
+        for (const roomId of rooms) {
+          const playerCount = Object.keys(
+            GameManager.gameStates[gameId][roomId].players
+          ).length;
+          if (playerCount > 0) {
+            totalPlayers += playerCount;
+            activeGames += 1;
+          }
+        }
+      }
+      res.json({ totalPlayers, activeGames });
     });
 
     // Handle socket connections
@@ -75,7 +100,7 @@ class GameManager {
         socket.disconnect(true);
         return;
       }
-
+      
       socket.data.gameId = gameId; // store on socket
       socket.data.roomId = roomId; // store on socket
 
@@ -99,6 +124,8 @@ class GameManager {
           scale: { x: 1, y: 1, z: 1 },
         },
       };
+
+      game.players[socket.id] = player;
       game.things[socket.id] = player;
 
       // Send them initial state for THIS game
@@ -253,6 +280,7 @@ class GameManager {
       socket.on("playerChangeRoom", (newRoomId) => {
         if (!VALID_ROOM_ID.includes(newRoomId)) return;
         io.to(roomName).emit("playerLeft", socket.id);
+        delete game.players[socket.id];
         delete game.things[socket.id];
         socket.leave(roomName);
 
@@ -261,6 +289,7 @@ class GameManager {
         game = this.getGameStateFromSocket(socket);
         roomName = game.roomName;
         player.roomId = newRoomId;
+        game.players[socket.id] = player;
         game.things[socket.id] = player;
         socket.join(roomName);
 
@@ -367,6 +396,7 @@ class GameManager {
       GameManager.gameStates[gameId][roomId] = {
         roomName: `${gameId}:${ROOM_ID_PREFIX}${roomId}`,
         cache: {},
+        players: {},
         things: {},
       };
     }

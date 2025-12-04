@@ -1,13 +1,11 @@
 // ProfileManager.js
 class ProfileManager {
   static profiles = {};
-  static globalStats = {};
   static globalCredits = 0;
   static globalPlayTime = 0;
   constructor(app, io, games) {
-
     // Example endpoint to get a profile by ID
-    app.get("/api/profile/:socketId", (req, res) => {
+    app.get("/api/profile/search/:socketId", (req, res) => {
       const id = req.params.socketId;
       const profile = this.getProfile(id);
       if (profile) {
@@ -17,16 +15,15 @@ class ProfileManager {
       }
     });
 
-    app.get("/api/profiles", (req, res) => {
+    app.get("/api/profile/all", (req, res) => {
       res.json(ProfileManager.profiles);
     });
 
-    app.get("/api/globalStats", (req, res) => {
-      res.json(ProfileManager.globalStats);
-    });
-    
-    app.get("/api/globalCredits", (req, res) => {
-      res.json({ globalCredits: ProfileManager.globalCredits });
+    app.get("/api/profile/globalStats", (req, res) => {
+      res.json({
+        globalCredits: ProfileManager.globalCredits,
+        globalPlayTime: ProfileManager.globalPlayTime,
+      });
     });
 
     // Example endpoint to create a profile
@@ -36,9 +33,14 @@ class ProfileManager {
         return res.status(400).json({ error: "Missing socketId or username" });
       }
       if (ProfileManagerprofiles[socketId]) {
-        return res.status(400).json({ error: "Profile already exists for this socketId" });
+        return res
+          .status(400)
+          .json({ error: "Profile already exists for this socketId" });
       }
-      ProfileManager.profiles[socketId] = this.createProfile(socketId, username);
+      ProfileManager.profiles[socketId] = this.createProfile(
+        socketId,
+        username
+      );
       res.json({ success: true, profile: ProfileManager.profiles[socketId] });
     });
 
@@ -46,13 +48,17 @@ class ProfileManager {
     app.post("/api/profile/login", (req, res) => {
       const { socketId, username } = req.body;
       if (!socketId || !username) {
-        return res.status(400).json({ success: false, message: "Missing socketId or username" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing socketId or username" });
       }
       const profile = this.getProfile(socketId);
       if (profile && profile.name === username) {
         return res.json({ success: true, profile });
       } else {
-        return res.status(401).json({ success: false, message: "Invalid credentials" });
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid credentials" });
       }
     });
 
@@ -60,17 +66,19 @@ class ProfileManager {
       if (!ProfileManager.profiles[socket.id]) {
         const tempUsername = `Guest_${socket.id.slice(0, 5)}`;
         this.createProfile(socket.id, tempUsername);
-        console.log(`Created guest profile for ${tempUsername} with socket id ${socket.id}`);
+        console.log(
+          `Created guest profile for ${tempUsername} with socket id ${socket.id}`
+        );
       }
       socket.on("disconnect", () => {
-        console.log(`Client disconnected: ${socket.id}, accumulating stats and credits.`);
+        console.log(
+          `Client disconnected: ${socket.id}, accumulating stats and credits.`
+        );
         const profile = this.getProfile(socket.id);
         if (profile) {
-          for (const key in profile.stats) {
-            ProfileManager.globalStats[key] = (ProfileManager.globalStats[key] || 0) + profile.stats[key];
-          }
           ProfileManager.globalCredits += profile.credits || 0;
-          ProfileManager.globalPlayTime += (Date.now() - new Date(profile.createdAt).getTime()) / 1000; // in seconds
+          ProfileManager.globalPlayTime +=
+            (Date.now() - new Date(profile.createdAt).getTime()) / 1000; // in seconds
         }
         delete ProfileManager.profiles[socket.id];
       });
