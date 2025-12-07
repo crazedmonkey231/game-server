@@ -1,0 +1,71 @@
+{
+  "paused": false,
+  "weather": { "timeOfDay": 14, "enabled": false },
+  "editor": {
+    "enabled": true,
+    "translationSnap": 1,
+    "rotationSnap": 15,
+    "scaleSnap": 0.1
+  },
+  "camera": {
+    "transform": {
+      "position": {
+        "x": -11.14,
+        "y": 7.54,
+        "z": -0.57
+      },
+      "rotation": {
+        "isEuler": true,
+        "_x": -0.59,
+        "_y": -1.62,
+        "_z": 0,
+        "_order": "YXZ"
+      },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    }
+  },
+  "things": [
+    {
+      "id": "Thing_HexTileGrid",
+      "name": "HexTileGrid",
+      "type": "HexTileGrid",
+      "alive": true,
+      "timeAlive": -1,
+      "tags": [],
+      "gameplayTags": [],
+      "transform": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "rotation": {
+          "isEuler": true,
+          "_x": 0,
+          "_y": 0,
+          "_z": 0,
+          "_order": "XYZ"
+        },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "data": { "radius": 3, "size": 1, "height": 0.3 }
+    },
+    {
+      "id": "Thing_GameDice",
+      "name": "sixSidedDice",
+      "type": "SixSidedDice",
+      "alive": true,
+      "timeAlive": -1,
+      "tags": [],
+      "gameplayTags": [],
+      "transform": {
+        "position": { "x": 0, "y": 7, "z": 0 },
+        "rotation": {
+          "isEuler": true,
+          "_x": 0,
+          "_y": 0,
+          "_z": 0,
+          "_order": "XYZ"
+        },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "data": {}
+    }
+  ]
+}

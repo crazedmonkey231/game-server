@@ -22,7 +22,11 @@ class DefaultGame {
     if (input.down) playerPos.y -= speed;
   }
 
-  update(game, outState) {
+  async create() {
+    // No special creation logic needed
+  }
+
+  update(io, game, outState) {
     for (const thingId in game.things) {
       const thing = game.things[thingId];
       const position = thing.transform.position;

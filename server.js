@@ -28,6 +28,7 @@ app.get("/", (req, res) => {
 
 const GAMES = {
   "default-game": require("./games/Default"),
+  "creation-game": require("./games/CreationGame"),
 }
 
 // -- Modules --
