@@ -10,9 +10,9 @@
   "camera": {
     "transform": {
       "position": {
-        "x": -11.14,
-        "y": 7.54,
-        "z": -0.57
+        "x": 0,
+        "y": 8,
+        "z": -12
       },
       "rotation": {
         "isEuler": true,

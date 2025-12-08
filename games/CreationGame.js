@@ -11,7 +11,7 @@ class CreationGame {
   create(room) {
     const { roomId } = room;
     if (roomId === "lobby") return;
-    console.log(`Creating new CreationGame in room: ${roomId}`);
+    // console.log(`Creating new CreationGame in room: ${roomId}`);
 
     // Determine board size based on roomId
     let boardSize = 1;
@@ -43,10 +43,10 @@ class CreationGame {
     game.timer = 0;
     game.started = false;
 
-    const cameraDist = 7 + boardSize;
+    const cameraDist = 8 + boardSize;
     game.camera.transform.position = {
-      x: cameraDist,
-      y: cameraDist + 7,
+      x: 0,
+      y: cameraDist + 8,
       z: cameraDist,
     };
 
@@ -72,8 +72,7 @@ class CreationGame {
     const playerCount = playerIds.length;
 
     if (cache.playerCount !== playerCount) {
-      console.log(`CreationGame: Player count changed to ${playerCount}`);
-
+      // console.log(`CreationGame: Player count changed to ${playerCount}`);
       cache.playerCount = playerCount;
     }
 
