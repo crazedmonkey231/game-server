@@ -339,7 +339,6 @@ class CreationGame {
           });
         }
       }
-      currentPlayer.input = {};
 
       const positionArc = (2 * Math.PI) / playerCount;
       for (let i = 0; i < playerCount; i++) {
@@ -356,6 +355,8 @@ class CreationGame {
           id: player.id,
           position: player.position,
         });
+        
+        player.input = {};
       }
     }
   }
