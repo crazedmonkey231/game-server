@@ -32,6 +32,20 @@ class BasicGame {
     gameState.timer = 0;
     gameState.started = false;
   }
+  
+  aiPlayerMax(){
+    return this.size
+  }
+
+  addAiPlayers() {
+    let aiPlayers = [];
+    for (let i = 0; i < this.size; i++) {
+      const aiId = `ai_${Date.now()}_${Math.floor(Math.random() * 1000)}_${i}`;
+      const aiPlayer = getPlayer(aiId, `AI_${aiId}`, true);
+      aiPlayers.push(aiPlayer);
+    }
+    return aiPlayers;
+  }
 
   emit(io, gameState, message, data) {
     io.to(gameState.roomName).emit(message, data);

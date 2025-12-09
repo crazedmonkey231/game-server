@@ -177,13 +177,32 @@ class CreationGame {
           const targets = Object.keys(grid.data.layers).filter(key => grid.data.layers[key].length < 6);
           // Check if the target layer is less than the max of 6
           if (targets.length > 0) {
-            const randIndex = Math.floor(Math.random() * targets.length);
-            const targetKey = targets[randIndex];
-            const [q, r] = targetKey.split(",").map((v) => parseInt(v));
-            input.type = "addLayerToTile";
-            input.q = q;
-            input.r = r;
-            input.thingId = grid.id;
+            // Find a target to add a layer to prioritizing the ones where AI has layers already
+            let foundPrioritized = false;
+            for (let i = 0; i < targets.length; i++) {
+              const key = targets[i];
+              const layers = grid.data.layers[key];
+              const aiLayerIndex = layers.findIndex(layer => layer.owner === currentPlayerId);
+              if (aiLayerIndex !== -1) {
+                const [q, r] = key.split(",").map((v) => parseInt(v));
+                input.type = "addLayerToTile";
+                input.q = q;
+                input.r = r;
+                input.thingId = grid.id;
+                foundPrioritized = true;
+                break;
+              }
+            }
+            if (!foundPrioritized) {
+              // No prioritized target found, just pick a random one
+              const randIndex = Math.floor(Math.random() * targets.length);
+              const targetKey = targets[randIndex];
+              const [q, r] = targetKey.split(",").map((v) => parseInt(v));
+              input.type = "addLayerToTile";
+              input.q = q;
+              input.r = r;
+              input.thingId = grid.id;
+            }
           }
         } else if (hasTargetAttack) {
           // Find a target to attack
