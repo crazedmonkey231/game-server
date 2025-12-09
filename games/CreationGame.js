@@ -139,24 +139,6 @@ class CreationGame {
       }
       const input = currentPlayer.input || {};
 
-      game.timer += 1;
-      if (game.timer > 1000) {
-        game.timer = 0;
-        if (currentPlayer.data.markedForRemoval) {
-          this.emit(io, game, "playerRemoved", {
-            playerId: currentPlayerId,
-            playerCount: playerCount - 1,
-          });
-          // console.log(`CreationGame: Removing player ${currentPlayerId}`);
-          delete players[currentPlayerId];
-          delete things[currentPlayerId];
-          return;
-        } else {
-          currentPlayer.data.markedForRemoval = true;
-        }
-        input.endTurn = true;
-      }
-
       // Process Ai player input
       if (currentPlayer.data.isAi) {
         currentPlayer.data.markedForRemoval = false;
