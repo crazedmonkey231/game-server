@@ -284,6 +284,7 @@ class CreationGame {
                 break;
               case 4:
                 currentPlayer.data.credits += 3;
+                currentPlayer.data.dice += 1;
                 getGridTargets = true;
                 gridTargetAmount = 2;
                 removeLayers = true;
