@@ -273,10 +273,10 @@ class CreationGame {
             let getOpponent = false;
             switch (effectRoll) {
               case 1:
-                currentPlayer.data.credits += 1;
+                currentPlayer.data.credits += 3;
                 break;
               case 2:
-                currentPlayer.data.dice += 1;
+                currentPlayer.data.dice += 2;
                 break;
               case 3:
                 // Choose random opponent to target
@@ -295,7 +295,8 @@ class CreationGame {
                 removeLayers = true;
                 break;
               case 6:
-                currentPlayer.data.dice += 1;
+                currentPlayer.data.dice += 2;
+                currentPlayer.data.credits += 6;
                 getGridTargets = true;
                 gridTargetAmount = 4;
                 removeLayers = true;
