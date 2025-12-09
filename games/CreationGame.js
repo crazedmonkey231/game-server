@@ -36,6 +36,10 @@ class CreationGame {
     });
   }
 
+  aiPlayerMax(){
+    return this.size
+  }
+
   addAiPlayers() {
     let aiPlayers = [];
     for (let i = 0; i < this.size; i++) {

@@ -291,7 +291,10 @@ function onConnection(io, socket) {
 
     socket.join(data.roomName);
 
-    data.game.addAiPlayer(data.roomId);
+    const currentCount = data.game.getPlayersAiOnly(data.roomId).length;
+    if (currentCount < data.game.instance.aiPlayerMax()){
+      data.game.addAiPlayer(data.roomId);
+    }
 
     io.to(data.roomName).emit("playerJoined", {
       playerCount: data.game.getPlayerCountInRoom(data.roomId),
