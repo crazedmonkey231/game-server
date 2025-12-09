@@ -337,6 +337,10 @@ class CreationGame {
               target.data.health -= 1;
               if (target.data.health < 0) target.data.health = 0;
               currentPlayer.score += 500;
+              if (target.data.health <= 0) {
+                delete players[target.id];
+                delete things[target.id];
+              }
             }
             const isLastPlayer =
               playerCount === 2 &&
