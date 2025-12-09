@@ -181,7 +181,7 @@ class Game {
         delete this.rooms[roomId];
         continue;
       }
-      if (gameState.players.length === 0) {
+      if (this.getPlayerCountInRoom(roomId) === 0) {
         delete this.rooms[roomId];
         continue;
       }
