@@ -1,3 +1,5 @@
+const { getPlayer } = require("./Utils");
+
 // GameManager module for handling multiple games and rooms
 const EVENT_TICK_RATE = 1000 / 30; // 30 times per second
 const VALID_ROOM_ID = (roomId) => {
@@ -21,15 +23,16 @@ class Game {
       this.rooms[roomId] = {
         roomId: roomId,
         roomName: `${this.gameId}:${roomId}`,
+        currentPlayerIndex: 0,
+        started: false,
         paused: false,
+        gameOver: false,
+        timer: 0,
         cache: {},
         players: {},
         things: {},
         weather: {},
         camera: {},
-        timer: 0,
-        currentPlayerIndex: 0,
-        started: false,
       };
       this.instance.create(this.rooms[roomId]);
     }
@@ -44,12 +47,27 @@ class Game {
     this.rooms[roomId].things[player.id] = player;
   }
 
+  addAiPlayer(roomId) {
+    let aiPlayers = [];
+    if (this.instance.addAiPlayers) {
+      aiPlayers = this.instance.addAiPlayers();
+    }
+    if (aiPlayers.length === 0) {
+      const aiId = `ai_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const aiPlayer = getPlayer(aiId, `AI_${aiId}`, true);
+      aiPlayers = [aiPlayer];
+    }
+    for (const aiPlayer of aiPlayers) {
+      this.addPlayer(roomId, aiPlayer);
+    }
+  }
+
   removePlayer(roomId, playerId) {
     if (!this.rooms[roomId]) return;
     delete this.rooms[roomId].players[playerId];
     delete this.rooms[roomId].things[playerId];
     if (
-      Object.keys(this.rooms[roomId].players).length === 0 &&
+      this.getPlayerCountInRoom(roomId) === 0 &&
       roomId !== "lobby" &&
       !this.instance.isPersistent
     ) {
@@ -73,18 +91,49 @@ class Game {
     return this.addGameState(roomId).roomName;
   }
 
-  getPlayersInRoom(roomId) {
-    return Object.values(this.addGameState(roomId).players);
+  getPlayers(roomId) {
+    let players = this.addGameState(roomId).players;
+    if (!players) return [];
+    players = Object.fromEntries(
+      Object.entries(players).filter(([id, player]) =>
+        player.gameplayTags.includes("player")
+      )
+    );
+    return Object.values(players);
+  }
+
+  getPlayersNoAi(roomId) {
+    let players = this.addGameState(roomId).players;
+    if (!players) return [];
+    players = Object.fromEntries(
+      Object.entries(players).filter(
+        ([id, player]) =>
+          player.gameplayTags.includes("player") && player.data.isAi === false
+      )
+    );
+    return Object.values(players);
+  }
+
+  getPlayersAiOnly(roomId) {
+    let players = this.addGameState(roomId).players;
+    if (!players) return [];
+    players = Object.fromEntries(
+      Object.entries(players).filter(
+        ([id, player]) =>
+          player.gameplayTags.includes("player") && player.data.isAi === true
+      )
+    );
+    return Object.values(players);
   }
 
   getPlayerCountInRoom(roomId) {
-    return Object.keys(this.addGameState(roomId).players).length;
+    return this.getPlayersNoAi(roomId).length;
   }
 
   getPlayerCountPerRoom() {
     const counts = {};
     for (const roomId in this.rooms) {
-      counts[roomId] = Object.keys(this.addGameState(roomId).players).length;
+      counts[roomId] = this.getPlayers(roomId).length;
     }
     return counts;
   }
@@ -92,7 +141,7 @@ class Game {
   getPlayerCount() {
     let count = 0;
     for (const roomId in this.rooms) {
-      count += Object.keys(this.rooms[roomId].players).length;
+      count += this.getPlayers(roomId).length;
     }
     return count;
   }
@@ -103,11 +152,21 @@ class Game {
     for (const playerId in fromRoom.players) {
       const player = fromRoom.players[playerId];
       player.score = 0;
+      if (player.data.isAi) {
+        // All players left, disable AI players
+        delete fromRoom.players[playerId];
+        delete fromRoom.things[playerId];
+        continue;
+      }
       toRoom.players[playerId] = player;
       toRoom.things[playerId] = player;
       delete fromRoom.players[playerId];
       delete fromRoom.things[playerId];
     }
+  }
+
+  deleteRoom(roomId) {
+    delete this.rooms[roomId];
   }
 
   update(io) {
@@ -184,34 +243,6 @@ function summary(req, res) {
 
 // -- GameManager Socket Handling --
 
-function getPlayer(id, name) {
-  colorData = {
-    r: Math.floor(Math.random() * 100) / 100,
-    g: Math.floor(Math.random() * 100) / 100,
-    b: Math.floor(Math.random() * 100) / 100,
-    a: 1,
-  };
-  return {
-    id: id,
-    name: name || `${id}`,
-    score: 0,
-    speed: 0.3,
-    type: "BasicCapsuleThing",
-    gameplayTags: ["player"],
-    transform: {
-      position: { x: 0, y: 0, z: 0 },
-      rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
-      scale: { x: 1, y: 1, z: 1 },
-    },
-    data: {
-      health: 3,
-      credits: 0,
-      dice: 0,
-      colorData: colorData,
-    },
-  };
-}
-
 function onConnection(io, socket) {
   // Handle new socket connection
   const { gameId, roomId, name } = socket.handshake.query;
@@ -259,6 +290,9 @@ function onConnection(io, socket) {
     data.game.addPlayer(data.roomId, data.player);
 
     socket.join(data.roomName);
+
+    data.game.addAiPlayer(data.roomId);
+
     io.to(data.roomName).emit("playerJoined", {
       playerCount: data.game.getPlayerCountInRoom(data.roomId),
       player: data.player,

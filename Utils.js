@@ -33,8 +33,38 @@ function getThing(id, name, type) {
   };
 }
 
+function getPlayer(id, name, isAi=false) {
+  colorData = {
+    r: Math.floor(Math.random() * 100) / 100,
+    g: Math.floor(Math.random() * 100) / 100,
+    b: Math.floor(Math.random() * 100) / 100,
+    a: 1,
+  };
+  return {
+    id: id,
+    name: name || `${id}`,
+    score: 0,
+    speed: 0.3,
+    type: "BasicCapsuleThing",
+    gameplayTags: ["player"],
+    transform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    data: {
+      isAi: isAi,
+      health: 3,
+      credits: 0,
+      dice: 0,
+      colorData: colorData,
+    },
+  };
+}
+
 module.exports = {
   fetchJson,
   fetchJsonSync,
   getThing,
+  getPlayer,
 };

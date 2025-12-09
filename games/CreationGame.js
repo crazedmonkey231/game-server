@@ -1,4 +1,4 @@
-const fetchJsonSync = require("../Utils").fetchJsonSync;
+const { getPlayer, fetchJsonSync } = require("../Utils");
 
 class CreationGame {
   constructor() {
@@ -6,6 +6,7 @@ class CreationGame {
     this.description = "A dice game.";
     this.isPersistent = false; // game state is not persistent
     this.collectedCredits = 0;
+    this.size = 1;
   }
 
   create(room) {
@@ -28,10 +29,21 @@ class CreationGame {
     } else {
       boardSize = 1;
     }
+    this.size = boardSize;
 
     fetchJsonSync("games/CreationGameData", "level", (data) => {
       this.onFetch(room, data, boardSize);
     });
+  }
+
+  addAiPlayers() {
+    let aiPlayers = [];
+    for (let i = 0; i < this.size; i++) {
+      const aiId = `ai_${Date.now()}_${Math.floor(Math.random() * 1000)}_${i}`;
+      const aiPlayer = getPlayer(aiId, `AI_${aiId}`, true);
+      aiPlayers.push(aiPlayer);
+    }
+    return aiPlayers;
   }
 
   onFetch(game, data, boardSize) {
@@ -54,6 +66,19 @@ class CreationGame {
     for (const objData of objList) {
       if (objData.type === "HexTileGrid") {
         objData.data.radius = boardSize;
+
+        // Initialize layers
+        objData.data.layers = {};
+        objData.data.attacks = {};
+        const hexRadius = boardSize;
+        for (let q = -hexRadius; q <= hexRadius; q++) {
+          const r1 = Math.max(-hexRadius, -q - hexRadius);
+          const r2 = Math.min(hexRadius, -q + hexRadius);
+          for (let r = r1; r <= r2; r++) {
+            objData.data.layers[`${q},${r}`] = [];
+            objData.data.attacks[`${q},${r}`] = false;
+          }
+        }
       }
       game.things[objData.id] = objData;
     }
@@ -85,6 +110,9 @@ class CreationGame {
       for (const playerId of playerIds) {
         const player = players[playerId];
         player.data.health = 3;
+        player.data.credits = 0;
+        player.data.dice = 0;
+        player.data.isAi = player.data.isAi || false;
       }
       game.currentPlayerIndex = 0;
       const firstPlayerId = playerIds[game.currentPlayerIndex];
@@ -123,6 +151,49 @@ class CreationGame {
           currentPlayer.data.markedForRemoval = true;
         }
         input.endTurn = true;
+      }
+
+      // Process Ai player input
+      if (currentPlayer.data.isAi) {
+        currentPlayer.data.markedForRemoval = false;
+        currentPlayer.data.thinkTimer =
+          (currentPlayer.data.thinkTimer || 0) + 1;
+        if (currentPlayer.data.thinkTimer < 30) {
+          return;
+        }
+        currentPlayer.data.thinkTimer = 0;
+        let hasTargetAttack = Object.values(things.Thing_HexTileGrid.data.attacks).some((v => v === true));
+        if (!hasTargetAttack && currentPlayer.data.dice === 0 && currentPlayer.data.credits === 0) {
+          input.endTurn = true;
+        } else if (currentPlayer.data.dice > 0) {
+          input.rollDice = true;
+          input.thingId = things.Thing_GameDice.id;
+        } else if (currentPlayer.data.credits > 0) {
+          const grid = things.Thing_HexTileGrid;
+          const targets = Object.keys(grid.data.layers).filter(key => grid.data.layers[key].length < 6);
+          // Check if the target layer is less than the max of 6
+          if (targets.length > 0) {
+            const randIndex = Math.floor(Math.random() * targets.length);
+            const targetKey = targets[randIndex];
+            const [q, r] = targetKey.split(",").map((v) => parseInt(v));
+            input.type = "addLayerToTile";
+            input.q = q;
+            input.r = r;
+            input.thingId = grid.id;
+          }
+        } else if (hasTargetAttack) {
+          // Find a target to attack
+          const grid = things.Thing_HexTileGrid;
+          const attackKeys = Object.keys(grid.data.attacks).filter(key => grid.data.attacks[key] === true);
+          if (attackKeys.length > 0) {
+            const randIndex = Math.floor(Math.random() * attackKeys.length);
+            const targetKey = attackKeys[randIndex];
+            const [q, r] = targetKey.split(",").map((v) => parseInt(v));
+            input.attack = { q: q, r: r };
+          }
+        } else {
+          input.endTurn = true;
+        }
       }
 
       if (input.endTurn) {
