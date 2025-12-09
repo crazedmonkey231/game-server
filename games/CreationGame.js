@@ -113,7 +113,7 @@ class CreationGame {
       });
       for (const playerId of playerIds) {
         const player = players[playerId];
-        player.data.health = 1;
+        player.data.health = 3;
         player.data.credits = 0;
         player.data.dice = 0;
         player.data.isAi = player.data.isAi || false;
@@ -144,7 +144,7 @@ class CreationGame {
         currentPlayer.data.markedForRemoval = false;
         currentPlayer.data.thinkTimer =
           (currentPlayer.data.thinkTimer || 0) + 1;
-        if (currentPlayer.data.thinkTimer < 30) {
+        if (currentPlayer.data.thinkTimer < 20) {
           return;
         }
         currentPlayer.data.thinkTimer = 0;
