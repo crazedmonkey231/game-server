@@ -113,7 +113,7 @@ class CreationGame {
       });
       for (const playerId of playerIds) {
         const player = players[playerId];
-        player.data.health = 3;
+        player.data.health = 1;
         player.data.credits = 0;
         player.data.dice = 0;
         player.data.isAi = player.data.isAi || false;
@@ -426,6 +426,7 @@ class CreationGame {
       for (let i = 0; i < playerCount; i++) {
         const playerId = playerIds[i];
         const player = players[playerId];
+        if (!player) continue;
         const angle = i * positionArc;
         const radius = things.Thing_HexTileGrid.data.radius + 6;
         player.position = {
