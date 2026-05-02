@@ -3,7 +3,17 @@ import type { Server as IOServer } from "socket.io";
 import type { Profile, IGame } from "../types/index.js";
 
 export class ProfileManager {
-  private static profiles: Record<string, Profile> = {};
+  private static profiles: Record<string, Profile> = {
+    "test123": {
+      id: "test123",
+      name: "TestUser",
+      credits: 100,
+      createdAt: new Date(),
+      stats: {
+        gamesPlayed: 0,
+      },
+    },
+  };
   private static globalCredits = 0;
   private static globalPlayTime = 0;
 
