@@ -1,6 +1,6 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
-import type { IGame, Room, Player } from "../types/index.js";
+import type { IGame, Room, Player, Thing } from "../types/index.js";
 import { getPlayer } from "../utils/index.js";
 
 const EVENT_TICK_RATE = 1000 / 30; // 30 Hz
@@ -75,7 +75,7 @@ class Game {
     }
   }
 
-  addThing(roomId: string, thing: Player): void {
+  addThing(roomId: string, thing: Thing): void {
     this.rooms[roomId].things[thing.id] = thing;
   }
 

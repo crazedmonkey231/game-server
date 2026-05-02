@@ -23,6 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve dashboard from /public
+// Note: static file serving intentionally has no rate limit; only public, read-only assets are served here.
 // __dirname is the compiled output dir (dist/) at runtime; ../public resolves to project root's public/
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("/", (_req, res) => {

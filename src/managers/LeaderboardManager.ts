@@ -2,8 +2,13 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import type { LeaderboardEntry, IGame } from "../types/index.js";
 
+/** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
+function isSafeKey(key: string): boolean {
+  return key !== "__proto__" && key !== "constructor" && key !== "prototype";
+}
+
 export class LeaderboardManager {
-  private leaderboard: Record<string, LeaderboardEntry[]> = {};
+  private leaderboard: Record<string, LeaderboardEntry[]> = Object.create(null);
 
   constructor(app: Application, io: IOServer, games: Record<string, IGame>) {
     for (const gameId in games) {
@@ -35,7 +40,7 @@ export class LeaderboardManager {
 
   private submit(req: Request, res: Response): void {
     const gameId = req.params.gameId as string;
-    if (!this.leaderboard[gameId]) {
+    if (!isSafeKey(gameId) || !this.leaderboard[gameId]) {
       res.status(400).json({ error: "Invalid gameId" });
       return;
     }
@@ -70,7 +75,8 @@ export class LeaderboardManager {
   }
 
   getLeaderboard(gameId: string): LeaderboardEntry[] {
-    if (!this.leaderboard[gameId]) {
+    if (!isSafeKey(gameId)) return [];
+    if (!Object.prototype.hasOwnProperty.call(this.leaderboard, gameId)) {
       this.leaderboard[gameId] = [];
     }
     return this.leaderboard[gameId];

@@ -2,6 +2,11 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import type { EventEntry, IGame } from "../types/index.js";
 
+/** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
+function isSafeKey(key: string): boolean {
+  return key !== "__proto__" && key !== "constructor" && key !== "prototype";
+}
+
 export class EventManager {
   private static events: Record<string, EventEntry[]> = {};
   private timerHandle: ReturnType<typeof setInterval>;
@@ -65,28 +70,40 @@ export class EventManager {
   }
 
   private triggerEvent(io: IOServer, req: Request, res: Response): void {
-    const { gameId, type, length, data } = req.body as {
-      gameId: unknown;
-      type: unknown;
-      length: unknown;
-      data: unknown;
-    };
+    // Guard against non-object bodies (e.g. arrays or primitives)
+    if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const gameId = body.gameId;
+    const type = body.type;
+    const dataRaw = body.data;
+
     if (typeof gameId !== "string" || typeof type !== "string") {
       res.status(400).json({ error: "Invalid gameId or type" });
       return;
     }
-    this.makeEvent(
-      io,
-      gameId,
-      type,
-      typeof length === "number" ? length : 0,
-      (data as Record<string, unknown>) ?? {}
-    );
+    if (!isSafeKey(gameId) || !isSafeKey(type)) {
+      res.status(400).json({ error: "Invalid gameId or type" });
+      return;
+    }
+
+    const lengthRaw = body.length;
+    const length = typeof lengthRaw === "number" && isFinite(lengthRaw) ? lengthRaw : 0;
+    const data: Record<string, unknown> =
+      typeof dataRaw === "object" && dataRaw !== null && !Array.isArray(dataRaw)
+        ? (dataRaw as Record<string, unknown>)
+        : {};
+
+    this.makeEvent(io, gameId, type, length, data);
     res.json({ success: true });
   }
 
   private isWeekend(): boolean {
     const day = new Date().getUTCDay();
+    // Friday (5) through Sunday (0) — "long weekend" window for Double XP events.
+    // Remove day === 5 if you only want Saturday–Sunday.
     return day === 5 || day === 6 || day === 0;
   }
 
