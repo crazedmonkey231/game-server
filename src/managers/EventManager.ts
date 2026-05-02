@@ -23,6 +23,32 @@ export class EventManager {
       res.json({ events: this.getEventsForGame(gameId) });
     });
 
+    /**
+     * DELETE /api/eventManager/removeEvent/:gameId/:type
+     * Removes the first active event matching gameId + type.
+     */
+    app.delete("/api/eventManager/removeEvent/:gameId/:type", (req: Request, res: Response) => {
+      const gameId = req.params.gameId as string;
+      const type = req.params.type as string;
+      if (!isSafeKey(gameId) || !isSafeKey(type)) {
+        res.status(400).json({ error: "Invalid gameId or type" });
+        return;
+      }
+      const events = EventManager.events[gameId];
+      if (!events) {
+        res.status(404).json({ error: "No events for that game" });
+        return;
+      }
+      const idx = events.findIndex((e) => e.type === type);
+      if (idx === -1) {
+        res.status(404).json({ error: "Event not found" });
+        return;
+      }
+      events.splice(idx, 1);
+      io.emit("eventEnded", { gameId, type });
+      res.json({ success: true });
+    });
+
     // Per-connection event subscription
     io.on("connection", (socket) => {
       socket.on("getManagedEvents", () => {
