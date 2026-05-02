@@ -80,20 +80,29 @@ async function fetchPlayerCounts() {
 
 // ── Active Events ─────────────────────────────────────────────────────────────
 
-const EVENT_GAME_IDS = ['default-game', 'creation-game'];
-
 async function fetchActiveEvents() {
   try {
     const tbody = document.getElementById('active-events-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
+    const data = await apiFetch('/api/gameManager/games');
+    const select = document.getElementById('event-game-id');
+    if (select) {
+      const current = select.value;
+      select.innerHTML = '';
+      data.games.forEach((g) => {
+        const opt = document.createElement('option');
+        opt.value = g.gameId;
+        opt.textContent = g.gameId;
+        select.appendChild(opt);
+      });
+      if (current) select.value = current;
+    }
     const results = await Promise.all(
-      EVENT_GAME_IDS.map((id) =>
-        apiFetch(`/api/eventManager/getEvents/${id}`).then((d) => ({ gameId: id, events: d.events || [] }))
+      data.games.map((game) =>
+        apiFetch(`/api/eventManager/getEvents/${game.gameId}`).then((d) => ({ gameId: game.gameId, events: d.events || [] }))
       )
     );
-
     let hasAny = false;
     for (const { gameId, events } of results) {
       for (const ev of events) {
@@ -195,9 +204,22 @@ async function fetchLeaderboard() {
   const select = document.getElementById('lb-game-id');
   const tbody = document.getElementById('leaderboard-body');
   if (!select || !tbody) return;
-  const gameId = select.value;
   tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Loading…</td></tr>';
   try {
+    const data = await apiFetch('/api/gameManager/games');
+    const gameId = select.value || (data.games[0] && data.games[0].gameId);
+    if (!gameId) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No games available</td></tr>';
+      return;
+    }
+    data.games.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.gameId;
+      opt.textContent = g.gameId;
+      if (!select.querySelector(`option[value="${g.gameId}"]`)) {
+        select.appendChild(opt);
+      }
+    });
     const entries = await apiFetch(`/api/leaderboard/${encodeURIComponent(gameId)}`);
     tbody.innerHTML = '';
     if (!Array.isArray(entries) || entries.length === 0) {

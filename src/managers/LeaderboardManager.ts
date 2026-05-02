@@ -26,6 +26,7 @@ export class LeaderboardManager {
      * optional query: ?limit=10
      */
     app.get("/api/leaderboard/:gameId", this.getLeaderboardForGame.bind(this));
+    
     // Handle socket leaderboard submissions per-connection
     io.on("connection", (socket) => {
       const { gameId } = socket.handshake.query as { gameId?: string };

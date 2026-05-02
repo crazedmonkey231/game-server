@@ -12,6 +12,7 @@ import { EventManager } from "./managers/EventManager.js";
 import { ProfileManager } from "./managers/ProfileManager.js";
 import { DefaultGame } from "./games/DefaultGame.js";
 import { CreationGame } from "./games/CreationGame.js";
+import { BlankGame } from "./games/BlankGame.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +33,7 @@ app.get("/", (_req, res) => {
 
 // Registered games
 const GAMES: Record<string, new () => IGame> = {
+  "blank-game": BlankGame,
   "default-game": DefaultGame,
   "creation-game": CreationGame,
 };
