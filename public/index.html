@@ -27,6 +27,7 @@
       <button class="tab-btn active" data-tab="overview">Overview</button>
       <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+      <button class="tab-btn" data-tab="games">Games</button>
       <button class="tab-btn" data-tab="admin">Admin</button>
     </nav>
 
@@ -75,7 +76,7 @@
     <main class="dashboard tab-panel" id="tab-events">
 
       <!-- Active Events -->
-      <div class="card">
+      <div class="card active-events-card">
         <h2>Active Events</h2>
         <table>
           <thead>
@@ -136,6 +137,40 @@
             <tr class="empty-row"><td colspan="4">Select a game to load the leaderboard.</td></tr>
           </tbody>
         </table>
+      </div>
+
+    </main>
+
+    <!-- ── Tab: Games ─────────────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel" id="tab-games">
+
+      <!-- Active Games -->
+      <div class="card games-card">
+        <h2>Active Games</h2>
+        <table>
+          <thead>
+            <tr><th>Game ID</th><th>Type</th><th>Name</th><th>Players</th><th></th></tr>
+          </thead>
+          <tbody id="games-list-body">
+            <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Register Game -->
+      <div class="card">
+        <h2>Register Game</h2>
+        <form id="add-game-form">
+          <div class="form-group">
+            <label for="new-game-id">Game ID</label>
+            <input type="text" id="new-game-id" placeholder="e.g. my-custom-game" />
+          </div>
+          <div class="form-group">
+            <label for="new-game-type">Game Type</label>
+            <select id="new-game-type"></select>
+          </div>
+          <button type="submit" class="btn-primary">Add Game</button>
+        </form>
       </div>
 
     </main>

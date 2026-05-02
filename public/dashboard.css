@@ -299,3 +299,13 @@ button {
   background-color: #dc3545;
   color: #fff;
 }
+
+/* ── Active events card ─────────────────────────────────────────────────────── */
+.active-events-card {
+  grid-column: 1 / -1;
+}
+
+/* ── Games card ─────────────────────────────────────────────────────────────── */
+.games-card {
+  grid-column: 1 / -1;
+}

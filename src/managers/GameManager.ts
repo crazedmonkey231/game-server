@@ -9,15 +9,27 @@ function isValidRoomId(roomId: string): boolean {
   return roomId === "sandbox" || roomId === "lobby" || roomId.startsWith("room");
 }
 
+/** Guards against prototype-polluting keys and enforces safe game ID format */
+function isSafeGameId(key: string): boolean {
+  return (
+    /^[a-z0-9][a-z0-9-]*$/.test(key) &&
+    key !== "__proto__" &&
+    key !== "constructor" &&
+    key !== "prototype"
+  );
+}
+
 // ─── Game wrapper ─────────────────────────────────────────────────────────────
 
 class Game {
   readonly gameId: string;
+  readonly gameType: string;
   readonly instance: IGame;
   readonly rooms: Record<string, Room> = {};
 
-  constructor(gameId: string, instance: IGame) {
+  constructor(gameId: string, gameType: string, instance: IGame) {
     this.gameId = gameId;
+    this.gameType = gameType;
     this.instance = instance;
   }
 
@@ -183,10 +195,12 @@ interface SocketGameData {
 // ─── GameManager ──────────────────────────────────────────────────────────────
 
 const games: Record<string, Game> = {};
+let availableGameTypes: Record<string, new () => IGame> = {};
 
 function loadGameMap(gameMap: Record<string, new () => IGame>): void {
+  availableGameTypes = gameMap;
   for (const gameId in gameMap) {
-    games[gameId] = new Game(gameId, new gameMap[gameId]());
+    games[gameId] = new Game(gameId, gameId, new gameMap[gameId]());
   }
 }
 
@@ -209,6 +223,9 @@ export class GameManager {
     app.get("/api/gameManager/playersInAllGames", this.playersInAllGames.bind(this));
     app.get("/api/gameManager/playersInPerGames", this.playersInPerGames.bind(this));
     app.get("/api/gameManager/summary", this.summary.bind(this));
+    app.get("/api/gameManager/games", this.listGames.bind(this));
+    app.post("/api/gameManager/games", this.addGame.bind(this));
+    app.delete("/api/gameManager/games/:gameId", this.removeGameById.bind(this));
 
     io.on("connection", (socket) => {
       this.onConnection(io, socket);
@@ -325,6 +342,65 @@ export class GameManager {
         playerCount: data.game.getPlayerCountInRoom(data.roomId),
       });
     });
+  }
+
+  private listGames(_req: Request, res: Response): void {
+    const gameList = Object.values(games).map((g) => ({
+      gameId: g.gameId,
+      gameType: g.gameType,
+      name: g.instance.name,
+      playerCount: g.getPlayerCount(),
+    }));
+    res.json({ games: gameList, availableTypes: Object.keys(availableGameTypes) });
+  }
+
+  private addGame(req: Request, res: Response): void {
+    if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+    const { gameId, gameType } = req.body as Record<string, unknown>;
+    if (typeof gameId !== "string" || typeof gameType !== "string") {
+      res.status(400).json({ error: "gameId and gameType must be strings" });
+      return;
+    }
+    if (!isSafeGameId(gameId)) {
+      res.status(400).json({ error: "Invalid gameId: use lowercase letters, digits, and hyphens only" });
+      return;
+    }
+    if (!isSafeGameId(gameType)) {
+      res.status(400).json({ error: "Invalid gameType" });
+      return;
+    }
+    if (games[gameId]) {
+      res.status(409).json({ error: `Game "${gameId}" is already registered` });
+      return;
+    }
+    const GameClass = availableGameTypes[gameType];
+    if (!GameClass) {
+      res.status(404).json({ error: `Unknown game type "${gameType}"` });
+      return;
+    }
+    games[gameId] = new Game(gameId, gameType, new GameClass());
+    res.status(201).json({ success: true, gameId, gameType });
+  }
+
+  private removeGameById(req: Request, res: Response): void {
+    const gameId = req.params.gameId as string;
+    if (!isSafeGameId(gameId)) {
+      res.status(400).json({ error: "Invalid gameId" });
+      return;
+    }
+    if (!games[gameId]) {
+      res.status(404).json({ error: `Game "${gameId}" not found` });
+      return;
+    }
+    if (games[gameId].getPlayerCount() > 0) {
+      res.status(409).json({ error: `Game "${gameId}" still has active players` });
+      return;
+    }
+    delete games[gameId];
+    res.json({ success: true });
   }
 
   destroy(): void {
