@@ -2,6 +2,9 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
 import type { IGame, Room, Player, Thing } from "../types/index.js";
 import { getPlayer } from "../utils/index.js";
+import { BlankGame } from "../games/BlankGame.js";
+import { CreationGame } from "../games/CreationGame.js";
+import { DefaultGame } from "../games/DefaultGame.js";
 
 const EVENT_TICK_RATE = 1000 / 30; // 30 Hz
 
@@ -27,10 +30,18 @@ class Game {
   readonly instance: IGame;
   readonly rooms: Record<string, Room> = {};
 
-  constructor(gameId: string, gameType: string, instance: IGame) {
+  private updateTimer: ReturnType<typeof setInterval>;
+  private io: IOServer;
+
+  constructor(gameId: string, gameType: string, instance: IGame, io: IOServer) {
     this.gameId = gameId;
     this.gameType = gameType;
     this.instance = instance;
+    this.io = io;
+
+    this.updateTimer = setInterval(() => {
+      this.update(this.io);
+    }, EVENT_TICK_RATE);
   }
 
   addGameState(roomId: string): Room {
@@ -179,6 +190,10 @@ class Game {
       }
     }
   }
+
+  destroy(): void {
+    clearInterval(this.updateTimer);
+  }
 }
 
 // ─── Socket data augmentation ─────────────────────────────────────────────────
@@ -194,29 +209,28 @@ interface SocketGameData {
 
 // ─── GameManager ──────────────────────────────────────────────────────────────
 
-const games: Record<string, Game> = {};
-let availableGameTypes: Record<string, new () => IGame> = {};
+let games: Record<string, Game> = {};
+let availableGameTypes: Record<string, new () => IGame> = {
+  "blank-game": BlankGame,
+  "default-game": DefaultGame,
+  "creation-game": CreationGame,
+};
 
-function loadGameMap(gameMap: Record<string, new () => IGame>): void {
+function loadGameMap(gameMap: Record<string, new () => IGame>, io: IOServer): void {
   availableGameTypes = gameMap;
   for (const gameId in gameMap) {
-    games[gameId] = new Game(gameId, gameId, new gameMap[gameId]());
+    games[gameId] = new Game(gameId, gameId, new gameMap[gameId](), io);
   }
 }
 
 export class GameManager {
+  private app: Application;
   private io: IOServer;
-  private serverTick: ReturnType<typeof setInterval>;
 
-  constructor(app: Application, io: IOServer, gameMap: Record<string, new () => IGame>) {
+  constructor(app: Application, io: IOServer) {
+    this.app = app;
     this.io = io;
-    loadGameMap(gameMap);
-
-    this.serverTick = setInterval(() => {
-      for (const gameId in games) {
-        games[gameId].update(io);
-      }
-    }, EVENT_TICK_RATE);
+    loadGameMap(availableGameTypes, io);
 
     app.post("/api/gameManager/playerNotify", this.playerNotify.bind(this));
     app.get("/api/gameManager/playersInGame/:gameId/:roomId", this.playersInGame.bind(this));
@@ -381,7 +395,7 @@ export class GameManager {
       res.status(404).json({ error: `Unknown game type "${gameType}"` });
       return;
     }
-    games[gameId] = new Game(gameId, gameType, new GameClass());
+    games[gameId] = new Game(gameId, gameType, new GameClass(), this.io);
     res.status(201).json({ success: true, gameId, gameType });
   }
 
@@ -399,11 +413,35 @@ export class GameManager {
       res.status(409).json({ error: `Game "${gameId}" still has active players` });
       return;
     }
+    games[gameId].destroy();
     delete games[gameId];
     res.json({ success: true });
   }
 
+  getGames(): Record<string, Game> {
+    return games;
+  }
+
+  getAvailableGameTypes(): Record<string, new () => IGame> {
+    return availableGameTypes;
+  }
+
+  getApp(): Application {
+    return this.app;
+  }
+
+  getIO(): IOServer {
+    return this.io;
+  }
+
+  getAppAndIO(): { app: Application; io: IOServer } {
+    return { app: this.app, io: this.io };
+  }
+
   destroy(): void {
-    clearInterval(this.serverTick);
+    for (const gameId in games) {
+      games[gameId].destroy();
+    }
+    games = {};
   }
 }

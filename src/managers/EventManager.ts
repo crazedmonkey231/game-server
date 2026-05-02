@@ -1,19 +1,22 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import type { EventEntry, IGame } from "../types/index.js";
+import { GameManager } from "./GameManager.js";
 
 /** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
 function isSafeKey(key: string): boolean {
   return key !== "__proto__" && key !== "constructor" && key !== "prototype";
 }
 
+const events: Record<string, EventEntry[]> = {};
+
 export class EventManager {
-  private static events: Record<string, EventEntry[]> = {};
   private timerHandle: ReturnType<typeof setInterval>;
 
-  constructor(app: Application, io: IOServer, _games: Record<string, IGame>) {
-    if (!io) {
-      throw new Error("EventManager requires Socket.IO instance");
+  constructor(gameManager: GameManager) {
+    const { app, io } = gameManager.getAppAndIO();
+    for (const gameId in gameManager.getGames()) {
+      events[gameId] = [];
     }
 
     app.post("/api/eventManager/triggerEvent", this.triggerEvent.bind(this, io));
@@ -34,17 +37,17 @@ export class EventManager {
         res.status(400).json({ error: "Invalid gameId or type" });
         return;
       }
-      const events = EventManager.events[gameId];
-      if (!events) {
+      const gameEvents = events[gameId];
+      if (!gameEvents) {
         res.status(404).json({ error: "No events for that game" });
         return;
       }
-      const idx = events.findIndex((e) => e.type === type);
+      const idx = gameEvents.findIndex((e) => e.type === type);
       if (idx === -1) {
         res.status(404).json({ error: "Event not found" });
         return;
       }
-      events.splice(idx, 1);
+      gameEvents.splice(idx, 1);
       io.emit("eventEnded", { gameId, type });
       res.json({ success: true });
     });
@@ -60,8 +63,8 @@ export class EventManager {
 
     this.timerHandle = setInterval(() => {
       if (this.isWeekend()) {
-        for (const gameId of Object.keys(EventManager.events)) {
-          if (EventManager.events[gameId].some((e) => e.type === "double-xp-weekend")) {
+        for (const gameId of Object.keys(events)) {
+          if (events[gameId].some((e) => e.type === "double-xp-weekend")) {
             continue;
           }
           this.makeEvent(io, gameId, "double-xp-weekend", 72 * 60 * 60 * 1000, {
@@ -70,8 +73,8 @@ export class EventManager {
           });
         }
       } else {
-        for (const gameId of Object.keys(EventManager.events)) {
-          EventManager.events[gameId] = EventManager.events[gameId].filter((event) => {
+        for (const gameId of Object.keys(events)) {
+          events[gameId] = events[gameId].filter((event) => {
             if (event.type === "double-xp-weekend") {
               io.emit("eventEnded", { gameId, type: event.type });
               return false;
@@ -81,10 +84,10 @@ export class EventManager {
         }
       }
 
-      if (Object.keys(EventManager.events).length === 0) return;
+      if (Object.keys(events).length === 0) return;
       const now = Date.now();
-      for (const gameId in EventManager.events) {
-        EventManager.events[gameId] = EventManager.events[gameId].filter((event) => {
+      for (const gameId in events) {
+        events[gameId] = events[gameId].filter((event) => {
           if (event.length > 0 && now - event.timestamp >= event.length) {
             io.emit("eventEnded", { gameId, type: event.type });
             return false;
@@ -140,10 +143,10 @@ export class EventManager {
     length: number,
     data: Record<string, unknown>
   ): void {
-    if (!EventManager.events[gameId]) {
-      EventManager.events[gameId] = [];
+    if (!events[gameId]) {
+      events[gameId] = [];
     }
-    EventManager.events[gameId].push({
+    events[gameId].push({
       type,
       data: data ?? {},
       timestamp: Date.now(),
@@ -153,7 +156,7 @@ export class EventManager {
   }
 
   getEventsForGame(gameId: string): EventEntry[] {
-    return EventManager.events[gameId] ?? [];
+    return events[gameId] ?? [];
   }
 
   destroy(): void {

@@ -1,6 +1,7 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import type { Profile, IGame } from "../types/index.js";
+import { GameManager } from "./GameManager.js";
 
 export class ProfileManager {
   private static profiles: Record<string, Profile> = {
@@ -17,7 +18,9 @@ export class ProfileManager {
   private static globalCredits = 0;
   private static globalPlayTime = 0;
 
-  constructor(app: Application, io: IOServer, _games: Record<string, IGame>) {
+  constructor(gameManager: GameManager) {
+    const { app, io } = gameManager.getAppAndIO();
+    
     app.get("/api/profile/search/:socketId", (req: Request, res: Response) => {
       const profile = this.getProfile(req.params.socketId as string);
       if (profile) {

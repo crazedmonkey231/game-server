@@ -1,6 +1,7 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import type { LeaderboardEntry, IGame } from "../types/index.js";
+import { GameManager } from "./GameManager.js";
 
 /** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
 function isSafeKey(key: string): boolean {
@@ -10,8 +11,9 @@ function isSafeKey(key: string): boolean {
 export class LeaderboardManager {
   private leaderboard: Record<string, LeaderboardEntry[]> = Object.create(null);
 
-  constructor(app: Application, io: IOServer, games: Record<string, IGame>) {
-    for (const gameId in games) {
+  constructor(gameManager: GameManager) {
+    const { app, io } = gameManager.getAppAndIO();
+    for (const gameId in gameManager.getGames()) {
       this.leaderboard[gameId] = [];
     }
 
@@ -26,7 +28,7 @@ export class LeaderboardManager {
      * optional query: ?limit=10
      */
     app.get("/api/leaderboard/:gameId", this.getLeaderboardForGame.bind(this));
-    
+
     // Handle socket leaderboard submissions per-connection
     io.on("connection", (socket) => {
       const { gameId } = socket.handshake.query as { gameId?: string };

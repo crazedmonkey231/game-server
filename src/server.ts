@@ -10,9 +10,6 @@ import { LeaderboardManager } from "./managers/LeaderboardManager.js";
 import { GameManager } from "./managers/GameManager.js";
 import { EventManager } from "./managers/EventManager.js";
 import { ProfileManager } from "./managers/ProfileManager.js";
-import { DefaultGame } from "./games/DefaultGame.js";
-import { CreationGame } from "./games/CreationGame.js";
-import { BlankGame } from "./games/BlankGame.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -31,18 +28,11 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-// Registered games
-const GAMES: Record<string, new () => IGame> = {
-  "blank-game": BlankGame,
-  "default-game": DefaultGame,
-  "creation-game": CreationGame,
-};
-
 // Modules
-new LeaderboardManager(app, io, {} as Record<string, IGame>);
-new GameManager(app, io, GAMES);
-new EventManager(app, io, {} as Record<string, IGame>);
-new ProfileManager(app, io, {} as Record<string, IGame>);
+const gameManager = new GameManager(app, io);
+new LeaderboardManager(gameManager);
+new EventManager(gameManager);
+new ProfileManager(gameManager);
 
 server.listen(PORT, () => {
   console.log(`Game backend listening on http://localhost:${PORT}`);
