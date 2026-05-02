@@ -20,6 +20,23 @@ function formatPlaytime(seconds) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// ── Tab switching ─────────────────────────────────────────────────────────────
+
+function initTabs() {
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      buttons.forEach((b) => b.classList.remove('active'));
+      panels.forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      const target = document.getElementById(`tab-${btn.dataset.tab}`);
+      if (target) target.classList.add('active');
+      if (btn.dataset.tab === 'leaderboard') fetchLeaderboard();
+    });
+  });
+}
+
 // ── Server Statistics ─────────────────────────────────────────────────────────
 
 async function fetchStats() {
@@ -85,18 +102,51 @@ async function fetchActiveEvents() {
             ? formatPlaytime(Math.max(0, Math.floor((ev.length - (Date.now() - ev.timestamp)) / 1000)))
             : 'Permanent';
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${escapeHtml(gameId)}</td>
-          <td><span class="badge badge-info">${escapeHtml(ev.type)}</span></td>
-          <td>${expiresIn}</td>`;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove';
+        removeBtn.textContent = 'Remove';
+        removeBtn.dataset.game = gameId;
+        removeBtn.dataset.type = ev.type;
+        const tdGame = document.createElement('td');
+        tdGame.textContent = gameId;
+        const tdType = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = 'badge badge-info';
+        badge.textContent = ev.type;
+        tdType.appendChild(badge);
+        const tdExpiry = document.createElement('td');
+        tdExpiry.textContent = expiresIn;
+        const tdAction = document.createElement('td');
+        tdAction.appendChild(removeBtn);
+        tr.appendChild(tdGame);
+        tr.appendChild(tdType);
+        tr.appendChild(tdExpiry);
+        tr.appendChild(tdAction);
         tbody.appendChild(tr);
       }
     }
     if (!hasAny) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No active events</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No active events</td></tr>';
     }
+
+    // Attach remove handlers
+    tbody.querySelectorAll('.btn-remove').forEach((btn) => {
+      btn.addEventListener('click', () => removeEvent(btn.dataset.game, btn.dataset.type));
+    });
   } catch (e) {
     console.error('Failed to fetch active events', e);
+  }
+}
+
+async function removeEvent(gameId, type) {
+  try {
+    await apiFetch(`/api/eventManager/removeEvent/${encodeURIComponent(gameId)}/${encodeURIComponent(type)}`, {
+      method: 'DELETE',
+    });
+    fetchActiveEvents();
+    showBanner(`Removed event "${type}" from ${gameId}.`, 'success');
+  } catch (err) {
+    showBanner(`Failed to remove event: ${err.message}`, 'error');
   }
 }
 
@@ -135,6 +185,39 @@ async function triggerEvent(e) {
     showBanner('Event triggered!', 'success');
   } catch (err) {
     showBanner(`Failed to trigger event: ${err.message}`, 'error');
+  }
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+
+async function fetchLeaderboard() {
+  const select = document.getElementById('lb-game-id');
+  const tbody = document.getElementById('leaderboard-body');
+  if (!select || !tbody) return;
+  const gameId = select.value;
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Loading…</td></tr>';
+  try {
+    const entries = await apiFetch(`/api/leaderboard/${encodeURIComponent(gameId)}`);
+    tbody.innerHTML = '';
+    if (!Array.isArray(entries) || entries.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No entries yet.</td></tr>';
+      return;
+    }
+    entries.forEach((entry, i) => {
+      const rank = i + 1;
+      const rankClass = rank <= 3 ? ` rank-${rank}` : '';
+      const date = new Date(entry.timestamp).toLocaleDateString();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="rank-cell${rankClass}">${rank}</td>
+        <td>${escapeHtml(entry.name)}</td>
+        <td>${entry.score.toLocaleString()}</td>
+        <td>${date}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Failed to load leaderboard.</td></tr>';
+    console.error('Failed to fetch leaderboard', e);
   }
 }
 
@@ -191,11 +274,15 @@ function refreshAll() {
   fetchStats();
   fetchPlayerCounts();
   fetchActiveEvents();
+  // Refresh leaderboard only when its tab is visible
+  const lbPanel = document.getElementById('tab-leaderboard');
+  if (lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
   const el = document.getElementById('refresh-status');
   if (el) el.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initTabs();
   refreshAll();
   setInterval(refreshAll, 5000);
 
@@ -204,4 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const loginForm = document.getElementById('login-form');
   if (loginForm) loginForm.addEventListener('submit', login);
+
+  const lbSelect = document.getElementById('lb-game-id');
+  if (lbSelect) lbSelect.addEventListener('change', fetchLeaderboard);
 });

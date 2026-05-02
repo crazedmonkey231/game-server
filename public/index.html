@@ -22,8 +22,16 @@
     <!-- Refresh status -->
     <div id="refresh-status">Auto-refreshing every 5 seconds…</div>
 
-    <!-- Dashboard grid -->
-    <main class="dashboard">
+    <!-- Tab bar -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="events">Events</button>
+      <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+      <button class="tab-btn" data-tab="admin">Admin</button>
+    </nav>
+
+    <!-- ── Tab: Overview ─────────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel active" id="tab-overview">
 
       <!-- Server Statistics -->
       <div class="card">
@@ -61,15 +69,20 @@
         </table>
       </div>
 
+    </main>
+
+    <!-- ── Tab: Events ───────────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel" id="tab-events">
+
       <!-- Active Events -->
       <div class="card">
         <h2>Active Events</h2>
         <table>
           <thead>
-            <tr><th>Game</th><th>Type</th><th>Expires In</th></tr>
+            <tr><th>Game</th><th>Type</th><th>Expires In</th><th></th></tr>
           </thead>
           <tbody id="active-events-body">
-            <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+            <tr class="empty-row"><td colspan="4">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -100,6 +113,35 @@
           <button type="submit" class="btn-primary">Trigger Event</button>
         </form>
       </div>
+
+    </main>
+
+    <!-- ── Tab: Leaderboard ──────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel" id="tab-leaderboard">
+
+      <div class="card leaderboard-card">
+        <h2>Leaderboard</h2>
+        <div class="form-group leaderboard-select-group">
+          <label for="lb-game-id">Game</label>
+          <select id="lb-game-id">
+            <option value="default-game">default-game</option>
+            <option value="creation-game">creation-game</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Name</th><th>Score</th><th>Date</th></tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr class="empty-row"><td colspan="4">Select a game to load the leaderboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+
+    <!-- ── Tab: Admin ────────────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel" id="tab-admin">
 
       <!-- Admin Login -->
       <div class="card">
