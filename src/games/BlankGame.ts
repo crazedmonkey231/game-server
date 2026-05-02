@@ -1,5 +1,5 @@
 import type { Server as IOServer } from "socket.io";
-import type { Player, Room, Thing } from "../types/index";
+import type { Player, GameState, Thing } from "../types/index";
 import { BaseGame } from "./BaseGame";
 
 
@@ -8,11 +8,11 @@ export class BlankGame extends BaseGame {
   readonly description = "A blank game with no special logic.";
   isPersistent = false;
 
-  create(room: Room): void {
+  create(room: GameState): void {
     // No special creation logic needed
   }
 
-  update(io: IOServer, currentRoom: Room, updatedPlayers: Player[], updatedThings: Thing[]): void {
+  update(io: IOServer, currentRoom: GameState, updatedPlayers: Player[], updatedThings: Thing[]): void {
     // No special update logic needed
     // const currentThings = Object.values(currentRoom.things);
     // updatedThings.push(...currentThings);

@@ -43,7 +43,7 @@ function initTabs() {
 async function fetchStats() {
   try {
     const [stats, summary] = await Promise.all([
-      apiFetch('/api/profile/globalStats'),
+      apiFetch('/api/globalStats'),
       apiFetch('/api/gameManager/summary'),
     ]);
     setEl('stat-players', summary.totalPlayers);

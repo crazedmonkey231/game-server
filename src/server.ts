@@ -4,10 +4,7 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 import { Server as IOServer } from "socket.io";
-import { LeaderboardManager } from "./managers/LeaderboardManager";
-import { GameManager } from "./managers/GameManager";
-import { EventManager } from "./managers/EventManager";
-import { ProfileManager } from "./managers/ProfileManager";
+import { GameServer } from "./core/gameserver";
 
 const app = express();
 const server = http.createServer(app);
@@ -24,11 +21,8 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-// Modules
-const gameManager = new GameManager(app, io);
-new LeaderboardManager(gameManager);
-new EventManager(gameManager);
-new ProfileManager(gameManager);
+// Initialize and start the game server
+new GameServer({ app, io }).start();
 
 // Start the server
 server.listen(PORT, () => {

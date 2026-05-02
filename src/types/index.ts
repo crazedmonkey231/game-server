@@ -67,7 +67,7 @@ export interface GlobalStats {
 
 // ─── Room / Game State ────────────────────────────────────────────────────────
 
-export interface Room {
+export interface GameState {
   roomId: string;
   roomName: string;
   started: boolean;
@@ -81,14 +81,15 @@ export interface Room {
 // ─── Game Interface ───────────────────────────────────────────────────────────
 
 import type { Server as IOServer } from "socket.io";
+import { Game } from "../core/game";
 
 export interface IGame {
   readonly name: string;
   readonly description: string;
   isPersistent: boolean;
 
-  create(room: Room): void | Promise<void>;
-  update(io: IOServer, currentRoom: Room, updatedPlayers: Player[], updatedThings: Thing[]): void;
+  create(room: GameState): void | Promise<void>;
+  update(io: IOServer, currentRoom: GameState, updatedPlayers: Player[], updatedThings: Thing[]): void;
 
   /** Optional: override to supply custom AI players */
   addAiPlayers?(): Player[];
@@ -125,18 +126,19 @@ export const profileStandings: Record<string, string> = {
 export type Standing = keyof typeof profileStandings;
 
 export interface ProfileStats {
+  credits: number;
   gamesPlayed: number;
   gamesWon: number;
   totalKills: number;
   totalDeaths: number;
+  standing?: Standing;
   [key: string]: unknown;
 }
 
 export interface Profile {
   id: string;
   name: string;
-  standing?: Standing;
-  credits: number;
   createdAt: Date;
   stats: ProfileStats;
 }
+

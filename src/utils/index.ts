@@ -3,6 +3,10 @@ import { promisify } from "node:util";
 import path from "node:path";
 import type { Player, Thing, ColorData } from "../types/index";
 
+export function getRoomName(gameId: string, roomId: string): string {
+  return `${gameId}:${roomId}`;
+}
+ 
 /** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
 export function isSafeKey(key: string): boolean {
   return key !== "__proto__" && key !== "constructor" && key !== "prototype";
