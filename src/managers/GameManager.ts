@@ -1,29 +1,14 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
 import type { IGame, Room, Player, Thing } from "../types/index.js";
-import { getPlayer } from "../utils/index.js";
+import { getPlayer, isSafeGameId, isValidRoomId } from "../utils/index.js";
 import { BlankGame } from "../games/BlankGame.js";
-import { CreationGame } from "../games/CreationGame.js";
-import { DefaultGame } from "../games/DefaultGame.js";
 
 const EVENT_TICK_RATE = 1000 / 30; // 30 Hz
 
-function isValidRoomId(roomId: string): boolean {
-  return roomId === "sandbox" || roomId === "lobby" || roomId.startsWith("room");
-}
-
-/** Guards against prototype-polluting keys and enforces safe game ID format */
-function isSafeGameId(key: string): boolean {
-  return (
-    /^[a-z0-9][a-z0-9-]*$/.test(key) &&
-    key !== "__proto__" &&
-    key !== "constructor" &&
-    key !== "prototype"
-  );
-}
-
 // ─── Game wrapper ─────────────────────────────────────────────────────────────
 
+/** The Game class is a wrapper around a specific game instance, managing its state, players, and rooms */
 class Game {
   readonly gameId: string;
   readonly gameType: string;
@@ -32,6 +17,9 @@ class Game {
 
   private updateTimer: ReturnType<typeof setInterval>;
   private io: IOServer;
+
+  private updatedThings: Thing[] = [];
+  private updatedPlayers: Player[] = [];
 
   constructor(gameId: string, gameType: string, instance: IGame, io: IOServer) {
     this.gameId = gameId;
@@ -49,16 +37,12 @@ class Game {
       this.rooms[roomId] = {
         roomId,
         roomName: `${this.gameId}:${roomId}`,
-        currentPlayerIndex: 0,
         started: false,
+        timer: 0,
         paused: false,
         gameOver: false,
-        timer: 0,
-        cache: {},
         players: {},
         things: {},
-        weather: {},
-        camera: {},
       };
       this.instance.create(this.rooms[roomId]);
     }
@@ -120,11 +104,11 @@ class Game {
   }
 
   getPlayersNoAi(roomId: string): Player[] {
-    return this.getPlayers(roomId).filter((p) => p.data.isAi === false);
+    return this.getPlayers(roomId).filter((p) => p.userData.isAi === false);
   }
 
   getPlayersAiOnly(roomId: string): Player[] {
-    return this.getPlayers(roomId).filter((p) => p.data.isAi === true);
+    return this.getPlayers(roomId).filter((p) => p.userData.isAi === true);
   }
 
   getPlayerCountInRoom(roomId: string): number {
@@ -153,7 +137,7 @@ class Game {
     for (const playerId in fromRoom.players) {
       const player = fromRoom.players[playerId];
       player.score = 0;
-      if (player.data.isAi) {
+      if (player.userData.isAi) {
         delete fromRoom.players[playerId];
         delete fromRoom.things[playerId];
         continue;
@@ -171,13 +155,14 @@ class Game {
 
   update(io: IOServer): void {
     for (const roomId in this.rooms) {
-      const gameState = this.rooms[roomId];
-      const outState: unknown[] = [];
-      this.instance.update(io, gameState, outState);
-      if (gameState.gameOver) {
-        io.to(gameState.roomName).emit("gameEnded", { reason: "Game Over" });
+      const currentRoomState = this.rooms[roomId];
+      this.updatedThings = [];
+      this.updatedPlayers = [];
+      this.instance.update(io, currentRoomState, this.updatedPlayers, this.updatedThings);
+      if (currentRoomState.gameOver) {
+        io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
         this.movePlayersToRoom(roomId, "lobby");
-        io.to(gameState.roomName).emit("playersMoved", { toRoom: "lobby" });
+        io.to(currentRoomState.roomName).emit("playersMoved", { toRoom: "lobby" });
         delete this.rooms[roomId];
         continue;
       }
@@ -185,8 +170,22 @@ class Game {
         delete this.rooms[roomId];
         continue;
       }
-      if (outState.length > 0) {
-        io.to(gameState.roomName).emit("serverUpdate", { things: outState });
+      if (this.updatedThings.length > 0 || this.updatedPlayers.length > 0) {
+        const serverUpdate: Partial<Room> = {
+          started: currentRoomState.started,
+          timer: currentRoomState.timer,
+          paused: currentRoomState.paused,
+          gameOver: currentRoomState.gameOver,
+          players: this.updatedPlayers.reduce((acc, player) => {
+            acc[player.id] = player;
+            return acc;
+          }, {} as Record<string, Player>),
+          things: this.updatedThings.reduce((acc, thing) => {
+            acc[thing.id] = thing;
+            return acc;
+          }, {} as Record<string, Thing>),
+        };
+        io.to(currentRoomState.roomName).emit("serverUpdate", serverUpdate);
       }
     }
   }
@@ -211,9 +210,7 @@ interface SocketGameData {
 
 let games: Record<string, Game> = {};
 let availableGameTypes: Record<string, new () => IGame> = {
-  "blank-game": BlankGame,
-  "default-game": DefaultGame,
-  "creation-game": CreationGame,
+  "blank-game": BlankGame
 };
 
 function loadGameMap(gameMap: Record<string, new () => IGame>, io: IOServer): void {
@@ -223,6 +220,7 @@ function loadGameMap(gameMap: Record<string, new () => IGame>, io: IOServer): vo
   }
 }
 
+/** The GameManager class is responsible for managing all game instances, handling player connections, and providing API endpoints for game management */
 export class GameManager {
   private app: Application;
   private io: IOServer;

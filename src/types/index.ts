@@ -1,23 +1,30 @@
 // ─── Geometry ────────────────────────────────────────────────────────────────
 
+/** Simple 2D vector */
+export interface Vector2 {
+  x: number;
+  y: number;
+}
+
+/** Simple 3D vector */
 export interface Vector3 {
   x: number;
   y: number;
   z: number;
 }
 
+/** Rotation can be represented as either Euler angles or a quaternion (for more complex 3D games) */
 export interface Rotation {
-  isEuler: boolean;
-  _x: number;
-  _y: number;
-  _z: number;
-  _order: string;
+  pitch: number;
+  yaw: number;
+  roll: number;
 }
 
+/** Transform, which includes position, rotation, and scale */
 export interface Transform {
-  position: Vector3;
-  rotation: Rotation;
-  scale: Vector3;
+  position: Vector3 | Vector2;
+  rotation: Rotation | number;
+  scale: Vector3 | number;
 }
 
 // ─── Game Objects ─────────────────────────────────────────────────────────────
@@ -25,13 +32,12 @@ export interface Transform {
 export interface Thing {
   id: string;
   name: string;
-  speed: number;
   type: string;
-  gameplayTags: string[];
+  speed: number;
   transform: Transform;
-  data: Record<string, unknown>;
-  velocity?: Vector3;
-  position?: Vector3;
+  velocity?: Vector3 | Vector2;
+  gameplayTags: string[];
+  userData: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -42,19 +48,21 @@ export interface ColorData {
   a: number;
 }
 
-export interface PlayerData {
+export interface Player extends Thing {
   isAi: boolean;
   health: number;
+  score: number;
   credits: number;
-  dice: number;
-  colorData: ColorData;
-  [key: string]: unknown;
+  color?: ColorData;
+  input?: Record<string, unknown>;
 }
 
-export interface Player extends Thing {
-  score: number;
-  data: PlayerData;
-  input?: Record<string, unknown>;
+// ─── Global Stats ─────────────────────────────────────────────────────────────
+
+export interface GlobalStats {
+  globalCredits: number;
+  globalPlayTime: number;
+  [key: string]: unknown;
 }
 
 // ─── Room / Game State ────────────────────────────────────────────────────────
@@ -62,16 +70,12 @@ export interface Player extends Thing {
 export interface Room {
   roomId: string;
   roomName: string;
-  currentPlayerIndex: number;
   started: boolean;
+  timer: number;
   paused: boolean;
   gameOver: boolean;
-  timer: number;
-  cache: Record<string, unknown>;
   players: Record<string, Player>;
   things: Record<string, Thing>;
-  weather: Record<string, unknown>;
-  camera: Record<string, unknown>;
 }
 
 // ─── Game Interface ───────────────────────────────────────────────────────────
@@ -84,7 +88,7 @@ export interface IGame {
   isPersistent: boolean;
 
   create(room: Room): void | Promise<void>;
-  update(io: IOServer, game: Room, outState: unknown[]): void;
+  update(io: IOServer, currentRoom: Room, updatedPlayers: Player[], updatedThings: Thing[]): void;
 
   /** Optional: override to supply custom AI players */
   addAiPlayers?(): Player[];
@@ -111,10 +115,28 @@ export interface EventEntry {
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 
+export const profileStandings: Record<string, string> = {
+  GREEN: "Rookie",
+  BLUE: "Veteran",
+  PURPLE: "Elite",
+  ORANGE: "Legend",
+  RED: "Mythic",
+};
+export type Standing = keyof typeof profileStandings;
+
+export interface ProfileStats {
+  gamesPlayed: number;
+  gamesWon: number;
+  totalKills: number;
+  totalDeaths: number;
+  [key: string]: unknown;
+}
+
 export interface Profile {
   id: string;
   name: string;
+  standing?: Standing;
   credits: number;
   createdAt: Date;
-  stats: Record<string, number>;
+  stats: ProfileStats;
 }

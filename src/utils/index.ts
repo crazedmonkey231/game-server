@@ -3,6 +3,32 @@ import { promisify } from "node:util";
 import path from "node:path";
 import type { Player, Thing, ColorData } from "../types/index.js";
 
+/** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
+export function isSafeKey(key: string): boolean {
+  return key !== "__proto__" && key !== "constructor" && key !== "prototype";
+}
+
+/** Guards against prototype-polluting keys and enforces safe game ID format */
+export function isSafeGameId(key: string): boolean {
+  return (
+    /^[a-z0-9][a-z0-9-]*$/.test(key) &&
+    key !== "__proto__" &&
+    key !== "constructor" &&
+    key !== "prototype"
+  );
+}
+
+export function isValidRoomId(roomId: string): boolean {
+  return roomId === "sandbox" || roomId === "lobby" || roomId.startsWith("room");
+}
+
+export function isWeekend(): boolean {
+  const day = new Date().getUTCDay();
+  // Friday (5) through Sunday (0) — "long weekend" window for Double XP events.
+  // Remove day === 5 if you only want Saturday–Sunday.
+  return day === 5 || day === 6 || day === 0;
+}
+
 const readFileAsync = promisify(readFile);
 
 export async function fetchJson<T = unknown>(
@@ -34,10 +60,10 @@ export function getThing(id: string, name: string, type: string): Thing {
     gameplayTags: [],
     transform: {
       position: { x: 0, y: 0, z: 0 },
-      rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
+      rotation: { pitch: 0, yaw: 0, roll: 0 },
       scale: { x: 1, y: 1, z: 1 },
     },
-    data: {},
+    userData: {},
   };
 }
 
@@ -49,23 +75,11 @@ export function getPlayer(id: string, name: string, isAi = false): Player {
     a: 1,
   };
   return {
-    id,
-    name: name || id,
+    ...getThing(id, name, "player"),
+    isAi,
+    color: colorData,
+    health: 100,
     score: 0,
-    speed: 0.3,
-    type: "BasicCapsuleThing",
-    gameplayTags: ["player"],
-    transform: {
-      position: { x: 0, y: 0, z: 0 },
-      rotation: { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ" },
-      scale: { x: 1, y: 1, z: 1 },
-    },
-    data: {
-      isAi,
-      health: 3,
-      credits: 0,
-      dice: 0,
-      colorData,
-    },
+    credits: 0,
   };
 }

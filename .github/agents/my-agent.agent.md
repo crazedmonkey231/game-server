@@ -21,5 +21,6 @@ Core
 3. Player-Focused but Not Player-Controlled
 4. Scheduled Maintenance
 5. Bug Handling
+6. Up to Date API Documentation
 
 This server manager is the quiet backbone of the game world. They keep the server alive through careful planning, disciplined code management, fair moderation, regular maintenance, and a deep respect for backups. They are not just an admin; they are the custodian of the world’s stability, the keeper of patch notes, and the last line of defense between the players and total technical collapse.

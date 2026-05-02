@@ -8,11 +8,13 @@ export class BlankGame extends BaseGame {
   readonly description = "A blank game with no special logic.";
   isPersistent = false;
 
-  create(_room: Room): void {
+  create(room: Room): void {
     // No special creation logic needed
   }
 
-  update(_io: IOServer, game: Room, outState: unknown[]): void {
+  update(io: IOServer, currentRoom: Room, updatedThings: Thing[]): void {
     // No special update logic needed
+    // const currentThings = Object.values(currentRoom.things);
+    // updatedThings.push(...currentThings);
   }
 }

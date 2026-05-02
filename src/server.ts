@@ -4,8 +4,6 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 import { Server as IOServer } from "socket.io";
-
-import type { IGame } from "./types/index.js";
 import { LeaderboardManager } from "./managers/LeaderboardManager.js";
 import { GameManager } from "./managers/GameManager.js";
 import { EventManager } from "./managers/EventManager.js";
@@ -20,9 +18,7 @@ const PORT = process.env.PORT ?? 3000;
 app.use(cors());
 app.use(express.json());
 
-// Serve dashboard from /public
-// Note: static file serving intentionally has no rate limit; only public, read-only assets are served here.
-// __dirname is the compiled output dir (dist/) at runtime; ../public resolves to project root's public/
+// Serve dashboard from /public directory
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
@@ -34,6 +30,7 @@ new LeaderboardManager(gameManager);
 new EventManager(gameManager);
 new ProfileManager(gameManager);
 
+// Start the server
 server.listen(PORT, () => {
   console.log(`Game backend listening on http://localhost:${PORT}`);
 });

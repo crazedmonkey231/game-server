@@ -1,6 +1,7 @@
 import type { Server as IOServer } from "socket.io";
-import type { Room, Thing } from "../types/index.js";
-import { BaseGame } from "./BaseGame.js";
+import type { Room, Thing } from "../src/types/index.js";
+import { BaseGame } from "../src/games/BaseGame.js";
+// import { fetchJsonSync } from "../utils/index.js";
 
 function roundToTwo(num: number): number {
   return Math.round(num * 100) / 100;
@@ -17,6 +18,10 @@ export class DefaultGame extends BaseGame {
 
   create(_room: Room): void {
     // No special creation logic needed
+
+    // fetchJsonSync<LevelData>("games/CreationGameData", "level", (data) => {
+    //   this.onFetch(room, data, boardSize);
+    // });
   }
 
   update(_io: IOServer, game: Room, outState: unknown[]): void {
@@ -25,7 +30,7 @@ export class DefaultGame extends BaseGame {
       const position = thing.transform.position;
       let speed = thing.speed ?? 0;
       const velocity = thing.velocity ?? { x: 0, y: 0, z: 0 };
-      const data = thing.data ?? {};
+      const data = thing.userData ?? {};
       const onGround = (data.onGround as boolean) ?? false;
       const bodyType = (data.bodyType as string) ?? "dynamic";
       const dirty = (data.dirty as boolean) ?? false;
