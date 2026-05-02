@@ -33,6 +33,7 @@ function initTabs() {
       const target = document.getElementById(`tab-${btn.dataset.tab}`);
       if (target) target.classList.add('active');
       if (btn.dataset.tab === 'leaderboard') fetchLeaderboard();
+      if (btn.dataset.tab === 'games') fetchGames();
     });
   });
 }
@@ -221,6 +222,101 @@ async function fetchLeaderboard() {
   }
 }
 
+// ── Games ─────────────────────────────────────────────────────────────────────
+
+async function fetchGames() {
+  try {
+    const data = await apiFetch('/api/gameManager/games');
+    const tbody = document.getElementById('games-list-body');
+    const typeSelect = document.getElementById('new-game-type');
+
+    if (typeSelect) {
+      const currentType = typeSelect.value;
+      typeSelect.innerHTML = '';
+      (data.availableTypes || []).forEach((type) => {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        typeSelect.appendChild(opt);
+      });
+      if (currentType) typeSelect.value = currentType;
+    }
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const gameList = data.games || [];
+    if (gameList.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No games registered</td></tr>';
+      return;
+    }
+    for (const game of gameList) {
+      const tr = document.createElement('tr');
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-remove';
+      removeBtn.textContent = 'Remove';
+      removeBtn.dataset.gameId = game.gameId;
+      if (game.playerCount > 0) {
+        removeBtn.disabled = true;
+        removeBtn.title = 'Cannot remove: players are active';
+      }
+      const tdId = document.createElement('td');
+      tdId.textContent = game.gameId;
+      const tdType = document.createElement('td');
+      tdType.textContent = game.gameType;
+      const tdName = document.createElement('td');
+      tdName.textContent = game.name;
+      const tdCount = document.createElement('td');
+      tdCount.textContent = game.playerCount;
+      const tdAction = document.createElement('td');
+      tdAction.appendChild(removeBtn);
+      tr.appendChild(tdId);
+      tr.appendChild(tdType);
+      tr.appendChild(tdName);
+      tr.appendChild(tdCount);
+      tr.appendChild(tdAction);
+      tbody.appendChild(tr);
+    }
+
+    tbody.querySelectorAll('.btn-remove').forEach((btn) => {
+      btn.addEventListener('click', () => removeGame(btn.dataset.gameId));
+    });
+  } catch (e) {
+    console.error('Failed to fetch games', e);
+  }
+}
+
+async function removeGame(gameId) {
+  try {
+    await apiFetch(`/api/gameManager/games/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
+    fetchGames();
+    showBanner(`Game "${gameId}" removed.`, 'success');
+  } catch (err) {
+    showBanner(`Failed to remove game: ${err.message}`, 'error');
+  }
+}
+
+async function addGame(e) {
+  e.preventDefault();
+  const gameId = document.getElementById('new-game-id').value.trim();
+  const gameType = document.getElementById('new-game-type').value;
+  if (!gameId || !gameType) {
+    showBanner('Game ID and Game Type are required.', 'error');
+    return;
+  }
+  try {
+    await apiFetch('/api/gameManager/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameId, gameType }),
+    });
+    document.getElementById('add-game-form').reset();
+    fetchGames();
+    showBanner(`Game "${gameId}" registered.`, 'success');
+  } catch (err) {
+    showBanner(`Failed to add game: ${err.message}`, 'error');
+  }
+}
+
 // ── Admin Login ───────────────────────────────────────────────────────────────
 
 async function login(e) {
@@ -291,6 +387,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const loginForm = document.getElementById('login-form');
   if (loginForm) loginForm.addEventListener('submit', login);
+
+  const addGameForm = document.getElementById('add-game-form');
+  if (addGameForm) addGameForm.addEventListener('submit', addGame);
 
   const lbSelect = document.getElementById('lb-game-id');
   if (lbSelect) lbSelect.addEventListener('change', fetchLeaderboard);
