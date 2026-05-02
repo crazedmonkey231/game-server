@@ -1,6 +1,6 @@
 import type { Server as IOServer } from "socket.io";
-import type { Room, Thing } from "../types/index.js";
-import { BaseGame } from "./BaseGame.js";
+import type { Player, Room, Thing } from "../types/index";
+import { BaseGame } from "./BaseGame";
 
 
 export class BlankGame extends BaseGame {
@@ -12,7 +12,7 @@ export class BlankGame extends BaseGame {
     // No special creation logic needed
   }
 
-  update(io: IOServer, currentRoom: Room, updatedThings: Thing[]): void {
+  update(io: IOServer, currentRoom: Room, updatedPlayers: Player[], updatedThings: Thing[]): void {
     // No special update logic needed
     // const currentThings = Object.values(currentRoom.things);
     // updatedThings.push(...currentThings);

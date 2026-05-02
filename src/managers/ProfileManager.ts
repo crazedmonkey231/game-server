@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import type { GlobalStats, Profile } from "../types/index.js";
-import { GameManager } from "./GameManager.js";
+import type { GlobalStats, Profile } from "../types/index";
+import { GameManager } from "./GameManager";
 import { Socket } from "socket.io";
 
 /** Global profiles map */

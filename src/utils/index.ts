@@ -1,7 +1,7 @@
 import { readFile, readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
-import type { Player, Thing, ColorData } from "../types/index.js";
+import type { Player, Thing, ColorData } from "../types/index";
 
 /** Guards against prototype-polluting keys such as __proto__, constructor, prototype */
 export function isSafeKey(key: string): boolean {

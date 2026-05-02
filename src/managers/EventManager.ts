@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
-import type { EventEntry } from "../types/index.js";
-import { GameManager } from "./GameManager.js";
-import { isSafeKey, isWeekend } from "../utils/index.js";
+import type { EventEntry } from "../types/index";
+import { isSafeKey, isWeekend } from "../utils/index";
+import { GameManager } from "./GameManager";
 
 /** In-memory storage for active events, keyed by game ID */
 const events: Record<string, EventEntry[]> = {};
@@ -72,8 +72,10 @@ const autoEvents: Record<string, AutoEvent> = {
 export class EventManager {
   private io: IOServer;
   private timerHandle: ReturnType<typeof setInterval>;
+  private gameManager: GameManager;
 
   constructor(gameManager: GameManager) {
+    this.gameManager = gameManager;
     const { app, io } = gameManager.getAppAndIO();
     this.io = io;
     for (const gameId in gameManager.getGames()) {
@@ -105,6 +107,12 @@ export class EventManager {
   }
 
   private managerInterval(): void {
+    // Sync games
+    for (const gameId in this.gameManager.getGames()) {
+      if (!events[gameId]) {
+        events[gameId] = [];
+      }
+    }
     // Check auto-triggered events and trigger or expire them as needed
     for (const key in autoEvents) {
       const autoEvent = autoEvents[key];

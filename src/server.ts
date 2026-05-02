@@ -4,10 +4,10 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 import { Server as IOServer } from "socket.io";
-import { LeaderboardManager } from "./managers/LeaderboardManager.js";
-import { GameManager } from "./managers/GameManager.js";
-import { EventManager } from "./managers/EventManager.js";
-import { ProfileManager } from "./managers/ProfileManager.js";
+import { LeaderboardManager } from "./managers/LeaderboardManager";
+import { GameManager } from "./managers/GameManager";
+import { EventManager } from "./managers/EventManager";
+import { ProfileManager } from "./managers/ProfileManager";
 
 const app = express();
 const server = http.createServer(app);

@@ -1,5 +1,5 @@
 import type { Server as IOServer } from "socket.io";
-import type { IGame, Room, Player, Thing } from "../types/index.js";
+import type { IGame, Room, Player, Thing } from "../types/index";
 
 /**
  * Abstract base class that all game implementations should extend.
@@ -11,7 +11,7 @@ export abstract class BaseGame implements IGame {
   abstract isPersistent: boolean;
 
   abstract create(room: Room): void | Promise<void>;
-  abstract update(io: IOServer, currentRoom: Room, updatedThings: Thing[]): void;
+  abstract update(io: IOServer, currentRoom: Room, updatedPlayers: Player[], updatedThings: Thing[]): void;
 
   emit(io: IOServer, currentRoom: Room, message: string, data: unknown): void {
     io.to(currentRoom.roomName).emit(message, data);

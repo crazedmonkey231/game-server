@@ -1,8 +1,7 @@
-import type { Application, Request, Response } from "express";
-import type { Server as IOServer } from "socket.io";
-import type { LeaderboardEntry, IGame } from "../types/index.js";
-import { GameManager } from "./GameManager.js";
-import { isSafeKey } from "../utils/index.js";
+import type { Request, Response } from "express";
+import type { LeaderboardEntry, IGame } from "../types/index";
+import { GameManager } from "./GameManager";
+import { isSafeKey } from "../utils/index";
 
 /** Manager for handling leaderboards for different games */
 export class LeaderboardManager {

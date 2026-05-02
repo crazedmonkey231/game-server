@@ -1,8 +1,8 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
-import type { IGame, Room, Player, Thing } from "../types/index.js";
-import { getPlayer, isSafeGameId, isValidRoomId } from "../utils/index.js";
-import { BlankGame } from "../games/BlankGame.js";
+import type { IGame, Room, Player, Thing } from "../types/index";
+import { getPlayer, isSafeGameId, isValidRoomId } from "../utils/index";
+import { BlankGame } from "../games/BlankGame";
 
 const EVENT_TICK_RATE = 1000 / 30; // 30 Hz
 
