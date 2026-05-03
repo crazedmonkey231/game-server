@@ -1,5 +1,5 @@
 import type { Server as IOServer } from "socket.io";
-import type { Player, GameState, Thing } from "../types/index";
+import type { Player, GameState, Thing, GameUpdatePayload } from "../types/index";
 import { BaseGame } from "./BaseGame";
 
 
@@ -12,9 +12,9 @@ export class BlankGame extends BaseGame {
     // No special creation logic needed
   }
 
-  update(io: IOServer, currentRoom: GameState, updatedPlayers: Player[], updatedThings: Thing[]): void {
+  update(payload: GameUpdatePayload): void {
     // No special update logic needed
-    // const currentThings = Object.values(currentRoom.things);
-    // updatedThings.push(...currentThings);
+    // const currentThings = Object.values(payload.currentRoom.things);
+    // payload.updatedThings.push(...currentThings);
   }
 }

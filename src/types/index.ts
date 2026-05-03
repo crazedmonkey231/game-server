@@ -1,3 +1,5 @@
+import type { Server as IOServer } from "socket.io";
+
 // ─── Geometry ────────────────────────────────────────────────────────────────
 
 /** Simple 2D vector */
@@ -34,6 +36,7 @@ export interface Thing {
   name: string;
   type: string;
   speed: number;
+  health?: number;
   transform: Transform;
   velocity?: Vector3 | Vector2;
   gameplayTags: string[];
@@ -48,13 +51,21 @@ export interface ColorData {
   a: number;
 }
 
+export interface Input {
+  keyboard: Record<string, boolean>;
+  mouse: {
+    x: number;
+    y: number;
+    buttons: Record<string, boolean>;
+  };
+  [key: string]: unknown;
+}
+
 export interface Player extends Thing {
   isAi: boolean;
-  health: number;
   score: number;
-  credits: number;
   color?: ColorData;
-  input?: Record<string, unknown>;
+  input?: Input;
 }
 
 // ─── Global Stats ─────────────────────────────────────────────────────────────
@@ -80,8 +91,14 @@ export interface GameState {
 
 // ─── Game Interface ───────────────────────────────────────────────────────────
 
-import type { Server as IOServer } from "socket.io";
-import { Game } from "../core/game";
+export interface GameUpdatePayload {
+  delta: number;
+  time: number;
+  io: IOServer;
+  currentRoom: GameState;
+  updatedPlayers: Player[];
+  updatedThings: Thing[];
+}
 
 export interface IGame {
   readonly name: string;
@@ -89,7 +106,7 @@ export interface IGame {
   isPersistent: boolean;
 
   create(room: GameState): void | Promise<void>;
-  update(io: IOServer, currentRoom: GameState, updatedPlayers: Player[], updatedThings: Thing[]): void;
+  update(payload: GameUpdatePayload): void;
 
   /** Optional: override to supply custom AI players */
   addAiPlayers?(): Player[];

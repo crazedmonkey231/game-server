@@ -1,9 +1,10 @@
 import { IGame, GameState, Thing, Player } from "../types";
 import { getPlayer, getRoomName } from "../utils";
 import type { Server as IOServer } from "socket.io";
+import { serverTickRate } from "./gameserver";
 
-/** The Game class is a wrapper around a specific game instance, managing its state, players, and rooms */
-export class Game {
+/** The RoomController class is a wrapper around a specific game instance, managing its state, players, and rooms */
+export class RoomController {
   readonly gameId: string;
   readonly gameType: string;
   readonly instance: IGame;
@@ -50,7 +51,14 @@ export class Game {
       const currentRoomState = this.gameStates[roomId];
       this.updatedThings = [];
       this.updatedPlayers = [];
-      this.instance.update(io, currentRoomState, this.updatedPlayers, this.updatedThings);
+      this.instance.update({
+        delta: serverTickRate,
+        time: Date.now(),
+        io,
+        currentRoom: currentRoomState,
+        updatedPlayers: this.updatedPlayers,
+        updatedThings: this.updatedThings,
+      });
       if (currentRoomState.gameOver) {
         io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
         this.movePlayersToRoom(roomId, "lobby");
@@ -86,6 +94,10 @@ export class Game {
     clearInterval(this.updateTimer);
   }
 
+  private emit(roomId: string, message: string, data: unknown): void {
+    this.io.to(getRoomName(this.gameId, roomId)).emit(message, data);
+  }
+
   getGameState(roomId: string): GameState {
     return this.gameStates[roomId];
   }
@@ -93,6 +105,7 @@ export class Game {
   addPlayer(roomId: string, player: Player): void {
     if (!this.gameStates[roomId]) this.addGameState(roomId);
     this.gameStates[roomId].players[player.id] = player;
+    this.emit(roomId, "playerJoined", { playerId: player.id, roomId });
   }
 
   addAiPlayer(roomId: string): void {
@@ -112,26 +125,30 @@ export class Game {
   removePlayer(roomId: string, playerId: string): void {
     if (!this.gameStates[roomId]) return;
     delete this.gameStates[roomId].players[playerId];
+    this.emit(roomId, "playerLeft", { playerId, roomId });
     if (
       this.getPlayerCountInRoom(roomId) === 0 &&
       roomId !== "lobby" &&
       !this.instance.isPersistent
     ) {
+      this.emit(roomId, "roomClosed", { roomId });
       delete this.gameStates[roomId];
     }
   }
 
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
+    this.emit(roomId, "thingAdded", { thingId: thing.id, roomId });
   }
 
   removeThing(roomId: string, thingId: string): void {
     delete this.getGameState(roomId).things[thingId];
+    this.emit(roomId, "thingRemoved", { thingId, roomId });
   }
 
   getPlayers(roomId: string): Player[] {
     const players = this.getGameState(roomId).players;
-    return Object.values(players).filter((p) => p.gameplayTags.includes("player"));
+    return Object.values(players).filter((p) => p.userData.isAi !== true);
   }
 
   getPlayersNoAi(roomId: string): Player[] {
@@ -174,10 +191,13 @@ export class Game {
       }
       toRoom.players[playerId] = player;
       delete fromRoom.players[playerId];
+      this.emit(fromRoomId, "playerLeft", { playerId, roomId: fromRoomId });
+      this.emit(toRoomId, "playerJoined", { playerId, roomId: toRoomId });
     }
   }
 
   deleteRoom(roomId: string): void {
+    this.emit(roomId, "roomClosed", { roomId });
     delete this.gameStates[roomId];
   }
 }
