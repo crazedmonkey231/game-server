@@ -8,6 +8,8 @@ import { ConnectionInfo } from "../connectioninfo";
 
 // ─── Game Management ─────────────────────────────────────────────────────────
 
+const DEFAULT_PLAYER_HEALTH = 100;
+
 export function accumulatePlayTime(connectionInfo: ConnectionInfo): void {
   const game = serverState.games.get(connectionInfo.gameId);
   if (game) {
@@ -164,7 +166,7 @@ export function listGameRooms(req: Request, res: Response): void {
       id: p.id,
       name: p.name,
       score: p.score,
-      health: p.health ?? 100,
+      health: p.health ?? DEFAULT_PLAYER_HEALTH,
       isAi: p.userData.isAi === true,
     })),
     things: Object.values(state.things).map((t) => ({

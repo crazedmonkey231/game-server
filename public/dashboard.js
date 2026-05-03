@@ -1,5 +1,6 @@
 /* global dashboard script */
 const BASE = window.location.origin;
+const AUTH_STORAGE_KEY = 'dashboard_profile';
 
 // ── Auth state ────────────────────────────────────────────────────────────────
 
@@ -7,7 +8,7 @@ let currentProfile = null;
 
 function loadAuthState() {
   try {
-    const saved = localStorage.getItem('dashboard_profile');
+    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
     if (saved) currentProfile = JSON.parse(saved);
   } catch (e) {
     currentProfile = null;
@@ -16,9 +17,9 @@ function loadAuthState() {
 
 function saveAuthState() {
   if (currentProfile) {
-    localStorage.setItem('dashboard_profile', JSON.stringify(currentProfile));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentProfile));
   } else {
-    localStorage.removeItem('dashboard_profile');
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   }
 }
 
@@ -523,7 +524,7 @@ function renderGameRooms(container, rooms) {
           <td class="id-cell">${escapeHtml(t.id)}</td>
           <td>${escapeHtml(t.name)}</td>
           <td>${escapeHtml(t.type)}</td>
-          <td>${t.health !== undefined ? t.health : '—'}</td>
+          <td>${t.health !== undefined ? t.health : 'N/A'}</td>
         `;
         tbody.appendChild(tr);
       }
