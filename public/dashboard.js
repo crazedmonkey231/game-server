@@ -490,7 +490,7 @@ function renderGameRooms(container, rooms) {
           <td>${escapeHtml(p.name)}</td>
           <td>${p.score}</td>
           <td>${p.health}</td>
-          <td>${p.isAi ? '<span class="badge badge-muted">AI</span>' : '<span class="badge badge-info">Human</span>'}</td>
+          <td>${p.isAi ? '<span class="badge badge-muted">AI</span>' : '<span class="badge badge-info">Player</span>'}</td>
         `;
         tbody.appendChild(tr);
       }
