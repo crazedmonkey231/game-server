@@ -74,20 +74,7 @@
 
     <!-- ── Tab: Events ───────────────────────────────────────────────────────── -->
     <main class="dashboard tab-panel" id="tab-events">
-
-      <!-- Active Events -->
-      <div class="card active-events-card">
-        <h2>Active Events</h2>
-        <table>
-          <thead>
-            <tr><th>Game</th><th>Type</th><th>Expires In</th><th></th></tr>
-          </thead>
-          <tbody id="active-events-body">
-            <tr class="empty-row"><td colspan="4">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-
+      
       <!-- Trigger Event -->
       <div class="card">
         <h2>Trigger Event</h2>
@@ -110,6 +97,19 @@
           </div>
           <button type="submit" class="btn-primary">Trigger Event</button>
         </form>
+      </div>
+
+      <!-- Active Events -->
+      <div class="card active-events-card">
+        <h2>Active Events</h2>
+        <table>
+          <thead>
+            <tr><th>Game</th><th>Type</th><th>Expires In</th><th></th></tr>
+          </thead>
+          <tbody id="active-events-body">
+            <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
 
     </main>
@@ -138,19 +138,6 @@
     <!-- ── Tab: Games ─────────────────────────────────────────────────────────── -->
     <main class="dashboard tab-panel" id="tab-games">
 
-      <!-- Active Games -->
-      <div class="card games-card">
-        <h2>Active Games</h2>
-        <table>
-          <thead>
-            <tr><th>Game ID</th><th>Type</th><th>Name</th><th>Players</th><th></th></tr>
-          </thead>
-          <tbody id="games-list-body">
-            <tr class="empty-row"><td colspan="5">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-
       <!-- Register Game -->
       <div class="card">
         <h2>Register Game</h2>
@@ -165,6 +152,19 @@
           </div>
           <button type="submit" class="btn-primary">Add Game</button>
         </form>
+      </div>
+
+      <!-- Active Games -->
+      <div class="card games-card">
+        <h2>Active Games</h2>
+        <table>
+          <thead>
+            <tr><th>Game ID</th><th>Type</th><th>Name</th><th>Players</th><th></th></tr>
+          </thead>
+          <tbody id="games-list-body">
+            <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
 
     </main>

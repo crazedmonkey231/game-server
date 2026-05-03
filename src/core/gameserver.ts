@@ -17,7 +17,6 @@ class ConnectionInfo {
   roomId: string;
   name: string;
   socket: Socket;
-  input: Record<string, unknown> = {};
   player: Player;
 
   constructor(socket: Socket, name: string = "Anonymous", gameId: string = "blank-game", roomId: string = "lobby") {
@@ -35,7 +34,7 @@ class ConnectionInfo {
 
     // Listen for player input updates and store them in the connection info for the game loop to process
     socket.on("playerInput", (input: Record<string, unknown>) => {
-      this.input = input;
+      this.player.input = input;
     });
 
     // Listen for room change requests and move the player to the new room
@@ -389,7 +388,7 @@ function listGames(req: Request, res: Response): void {
       name: g.instance.name,
       playerCount: g.getPlayerCount(),
     }));
-    res.json({ games: gameList, availableTypes: Object.keys(serverState.availableGames) });
+    res.json({ games: gameList, availableTypes: Array.from(serverState.availableGames.keys()) });
 }
 
 /** Add a new game by type, with a unique ID provided in the request body */
