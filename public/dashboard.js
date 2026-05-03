@@ -1,6 +1,58 @@
 /* global dashboard script */
 const BASE = window.location.origin;
 
+// ── Auth state ────────────────────────────────────────────────────────────────
+
+let currentProfile = null;
+
+function loadAuthState() {
+  try {
+    const saved = localStorage.getItem('dashboard_profile');
+    if (saved) currentProfile = JSON.parse(saved);
+  } catch (e) {
+    currentProfile = null;
+  }
+}
+
+function saveAuthState() {
+  if (currentProfile) {
+    localStorage.setItem('dashboard_profile', JSON.stringify(currentProfile));
+  } else {
+    localStorage.removeItem('dashboard_profile');
+  }
+}
+
+function updateAuthUI() {
+  const loggedIn = currentProfile !== null;
+  document.body.classList.toggle('logged-in', loggedIn);
+
+  const authStatus = document.getElementById('auth-status');
+  if (authStatus) {
+    authStatus.textContent = loggedIn ? `Logged in as ${currentProfile.name}` : 'Not logged in';
+    authStatus.className = loggedIn ? 'auth-status auth-status-on' : 'auth-status auth-status-off';
+  }
+
+  const loginStatus = document.getElementById('login-status');
+  if (loginStatus) {
+    if (loggedIn) {
+      loginStatus.textContent = `✔ Logged in as ${currentProfile.name}`;
+      loginStatus.style.display = 'block';
+    } else {
+      loginStatus.style.display = 'none';
+    }
+  }
+
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) loginForm.style.display = loggedIn ? 'none' : 'flex';
+
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = loggedIn ? 'block' : 'none';
+
+  // Re-render dynamic tables so button states reflect current auth
+  fetchActiveEvents();
+  fetchGames();
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options) {
@@ -117,6 +169,8 @@ async function fetchActiveEvents() {
         removeBtn.textContent = 'Remove';
         removeBtn.dataset.game = gameId;
         removeBtn.dataset.type = ev.type;
+        removeBtn.disabled = !currentProfile;
+        if (!currentProfile) removeBtn.title = 'Login required';
         const tdGame = document.createElement('td');
         tdGame.textContent = gameId;
         const tdType = document.createElement('td');
@@ -273,14 +327,24 @@ async function fetchGames() {
     }
     for (const game of gameList) {
       const tr = document.createElement('tr');
+
       const removeBtn = document.createElement('button');
       removeBtn.className = 'btn-remove';
       removeBtn.textContent = 'Remove';
       removeBtn.dataset.gameId = game.gameId;
-      if (game.playerCount > 0) {
+      if (!currentProfile) {
+        removeBtn.disabled = true;
+        removeBtn.title = 'Login required';
+      } else if (game.playerCount > 0) {
         removeBtn.disabled = true;
         removeBtn.title = 'Cannot remove: players are active';
       }
+
+      const roomsBtn = document.createElement('button');
+      roomsBtn.className = 'btn-rooms';
+      roomsBtn.textContent = 'Rooms';
+      roomsBtn.dataset.gameId = game.gameId;
+
       const tdId = document.createElement('td');
       tdId.textContent = game.gameId;
       const tdType = document.createElement('td');
@@ -291,19 +355,27 @@ async function fetchGames() {
       tdCount.textContent = game.playerCount;
       const tdPlayTime = document.createElement('td');
       tdPlayTime.textContent = formatPlaytime(game.playTime);
+      const tdRooms = document.createElement('td');
+      tdRooms.appendChild(roomsBtn);
       const tdAction = document.createElement('td');
       tdAction.appendChild(removeBtn);
+
       tr.appendChild(tdId);
       tr.appendChild(tdType);
       tr.appendChild(tdName);
       tr.appendChild(tdCount);
       tr.appendChild(tdPlayTime);
+      tr.appendChild(tdRooms);
       tr.appendChild(tdAction);
       tbody.appendChild(tr);
     }
 
     tbody.querySelectorAll('.btn-remove').forEach((btn) => {
       btn.addEventListener('click', () => removeGame(btn.dataset.gameId));
+    });
+
+    tbody.querySelectorAll('.btn-rooms').forEach((btn) => {
+      btn.addEventListener('click', () => fetchGameRooms(btn.dataset.gameId));
     });
   } catch (e) {
     console.error('Failed to fetch games', e);
@@ -313,6 +385,8 @@ async function fetchGames() {
 async function removeGame(gameId) {
   try {
     await apiFetch(`/api/gameManager/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
+    const card = document.getElementById('game-rooms-card');
+    if (card && card.dataset.gameId === gameId) card.style.display = 'none';
     fetchGames();
     showBanner(`Game "${gameId}" removed.`, 'success');
   } catch (err) {
@@ -342,6 +416,126 @@ async function addGame(e) {
   }
 }
 
+// ── Game Rooms drill-down ──────────────────────────────────────────────────────
+
+async function fetchGameRooms(gameId) {
+  const card = document.getElementById('game-rooms-card');
+  const title = document.getElementById('game-rooms-title');
+  const body = document.getElementById('game-rooms-body');
+  if (!card || !body) return;
+
+  card.style.display = 'block';
+  card.dataset.gameId = gameId;
+  if (title) title.textContent = `Rooms — ${escapeHtml(gameId)}`;
+  body.innerHTML = '<p class="rooms-loading">Loading rooms…</p>';
+
+  // Scroll the card into view
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const data = await apiFetch(`/api/gameManager/${encodeURIComponent(gameId)}/rooms`);
+    renderGameRooms(body, data.rooms || []);
+  } catch (e) {
+    body.innerHTML = '<p class="rooms-error">Failed to load rooms.</p>';
+    console.error('Failed to fetch game rooms', e);
+  }
+}
+
+function renderGameRooms(container, rooms) {
+  if (rooms.length === 0) {
+    container.innerHTML = '<p class="rooms-empty">No rooms found for this game.</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for (const room of rooms) {
+    const section = document.createElement('div');
+    section.className = 'room-section';
+
+    // Room header
+    const header = document.createElement('div');
+    header.className = 'room-header';
+    header.innerHTML = `
+      <span class="room-id">${escapeHtml(room.roomId)}</span>
+      ${room.started ? '<span class="badge badge-success">Started</span>' : '<span class="badge badge-muted">Lobby</span>'}
+      ${room.paused ? '<span class="badge badge-warning">Paused</span>' : ''}
+      <span class="room-meta">${room.playerCount} player${room.playerCount !== 1 ? 's' : ''} · ${room.thingCount} thing${room.thingCount !== 1 ? 's' : ''}</span>
+    `;
+    section.appendChild(header);
+
+    // Players table
+    const playersWrap = document.createElement('div');
+    playersWrap.className = 'room-sub-section';
+    const playersLabel = document.createElement('div');
+    playersLabel.className = 'room-sub-label';
+    playersLabel.textContent = 'Players';
+    playersWrap.appendChild(playersLabel);
+
+    if (room.players.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'rooms-empty';
+      empty.textContent = 'No players in this room.';
+      playersWrap.appendChild(empty);
+    } else {
+      const tbl = document.createElement('table');
+      tbl.innerHTML = `
+        <thead><tr><th>ID</th><th>Name</th><th>Score</th><th>Health</th><th>Type</th></tr></thead>
+      `;
+      const tbody = document.createElement('tbody');
+      for (const p of room.players) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="id-cell">${escapeHtml(p.id)}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${p.score}</td>
+          <td>${p.health}</td>
+          <td>${p.isAi ? '<span class="badge badge-muted">AI</span>' : '<span class="badge badge-info">Human</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      tbl.appendChild(tbody);
+      playersWrap.appendChild(tbl);
+    }
+    section.appendChild(playersWrap);
+
+    // Things table
+    const thingsWrap = document.createElement('div');
+    thingsWrap.className = 'room-sub-section';
+    const thingsLabel = document.createElement('div');
+    thingsLabel.className = 'room-sub-label';
+    thingsLabel.textContent = 'Things';
+    thingsWrap.appendChild(thingsLabel);
+
+    if (room.things.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'rooms-empty';
+      empty.textContent = 'No things in this room.';
+      thingsWrap.appendChild(empty);
+    } else {
+      const tbl = document.createElement('table');
+      tbl.innerHTML = `
+        <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Health</th></tr></thead>
+      `;
+      const tbody = document.createElement('tbody');
+      for (const t of room.things) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="id-cell">${escapeHtml(t.id)}</td>
+          <td>${escapeHtml(t.name)}</td>
+          <td>${escapeHtml(t.type)}</td>
+          <td>${t.health !== undefined ? t.health : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      tbl.appendChild(tbody);
+      thingsWrap.appendChild(tbl);
+    }
+    section.appendChild(thingsWrap);
+
+    container.appendChild(section);
+  }
+}
+
 // ── Admin Login ───────────────────────────────────────────────────────────────
 
 async function login(e) {
@@ -356,6 +550,9 @@ async function login(e) {
       body: JSON.stringify({ socketId, username }),
     });
     if (data.success) {
+      currentProfile = data.profile;
+      saveAuthState();
+      updateAuthUI();
       showBanner('Login successful!', 'success');
       document.getElementById('login-form').reset();
     } else {
@@ -364,6 +561,13 @@ async function login(e) {
   } catch (err) {
     showBanner(`Login error: ${err.message}`, 'error');
   }
+}
+
+function logout() {
+  currentProfile = null;
+  saveAuthState();
+  updateAuthUI();
+  showBanner('Logged out.', 'success');
 }
 
 // ── Banner notification ───────────────────────────────────────────────────────
@@ -398,12 +602,19 @@ function refreshAll() {
   // Refresh leaderboard only when its tab is visible
   const lbPanel = document.getElementById('tab-leaderboard');
   if (lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
+  // Refresh rooms drill-down if currently visible
+  const roomsCard = document.getElementById('game-rooms-card');
+  if (roomsCard && roomsCard.style.display !== 'none' && roomsCard.dataset.gameId) {
+    fetchGameRooms(roomsCard.dataset.gameId);
+  }
   const el = document.getElementById('refresh-status');
   if (el) el.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadAuthState();
   initTabs();
+  updateAuthUI();
   refreshAll();
   setInterval(refreshAll, 5000);
 
@@ -418,4 +629,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const lbSelect = document.getElementById('lb-game-id');
   if (lbSelect) lbSelect.addEventListener('change', fetchLeaderboard);
+
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+  const closeRoomsBtn = document.getElementById('close-rooms-btn');
+  if (closeRoomsBtn) {
+    closeRoomsBtn.addEventListener('click', () => {
+      const card = document.getElementById('game-rooms-card');
+      if (card) {
+        card.style.display = 'none';
+        delete card.dataset.gameId;
+      }
+    });
+  }
 });
+
