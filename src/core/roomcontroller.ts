@@ -10,6 +10,8 @@ interface RoomUpdate {
 
 /** The RoomController class is a wrapper around a specific game instance, managing its state, players, and rooms */
 export class RoomController {
+  private totalPlayTime = 0;
+
   readonly gameId: string;
   readonly gameType: string;
   readonly instance: IGame;
@@ -31,6 +33,10 @@ export class RoomController {
     this.updateTimer = setInterval(() => {
       this.update(this.io);
     }, tickRate);
+  }
+
+  private emit(roomId: string, message: string, data: unknown): void {
+    this.io.to(getRoomName(this.gameId, roomId)).emit(message, data);
   }
 
   addGameState(roomId: string): GameState {
@@ -94,12 +100,27 @@ export class RoomController {
     }
   }
 
-  destroy(): void {
-    clearInterval(this.updateTimer);
+  applyDamage(roomId: string, attackerId: string, targetId: string, amount: number): void {
+    const roomState = this.getGameState(roomId);
+    const target = roomState.players[targetId];
+    if (!target) return;
+    target.health = (target.health || 100) - amount;
+    if (target.health <= 0) {
+      target.health = 0;
+      this.emit(roomId, "playerDied", { playerId: targetId, roomId });
+      if (attackerId !== targetId) {
+        const attacker = roomState.players[attackerId];
+        if (attacker) {
+          attacker.score = (attacker.score || 0) + 1;
+          this.pendingUpdates[roomId].players.push(attacker);
+        }
+      }
+    }
+    this.pendingUpdates[roomId].players.push(target);
   }
 
-  private emit(roomId: string, message: string, data: unknown): void {
-    this.io.to(getRoomName(this.gameId, roomId)).emit(message, data);
+  destroy(): void {
+    clearInterval(this.updateTimer);
   }
 
   getGameState(roomId: string): GameState {
@@ -184,6 +205,14 @@ export class RoomController {
     return count;
   }
 
+  addPlayTime(delta: number): void {
+    this.totalPlayTime += delta / 1000; // Convert milliseconds to seconds
+  }
+
+  getPlayTime(): number {
+    return this.totalPlayTime;
+  }
+
   movePlayersToRoom(fromRoomId: string, toRoomId: string): void {
     const fromRoom = this.addGameState(fromRoomId);
     const toRoom = this.addGameState(toRoomId);
@@ -204,24 +233,5 @@ export class RoomController {
   deleteRoom(roomId: string): void {
     this.emit(roomId, "roomClosed", { roomId });
     delete this.gameStates[roomId];
-  }
-
-  applyDamage(roomId: string, attackerId: string, targetId: string, amount: number): void {
-    const roomState = this.getGameState(roomId);
-    const target = roomState.players[targetId];
-    if (!target) return;
-    target.health = (target.health || 100) - amount;
-    if (target.health <= 0) {
-      target.health = 0;
-      this.emit(roomId, "playerDied", { playerId: targetId, roomId });
-      if (attackerId !== targetId) {
-        const attacker = roomState.players[attackerId];
-        if (attacker) {
-          attacker.score = (attacker.score || 0) + 1;
-          this.pendingUpdates[roomId].players.push(attacker);
-        }
-      }
-    }
-    this.pendingUpdates[roomId].players.push(target);
   }
 }

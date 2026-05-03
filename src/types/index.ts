@@ -24,9 +24,9 @@ export interface Rotation {
 
 /** Transform, which includes position, rotation, and scale */
 export interface Transform {
-  position: Vector3 | Vector2;
-  rotation: Rotation | number;
-  scale: Vector3 | number;
+  position: Vector3;
+  rotation: Rotation;
+  scale: Vector3;
 }
 
 // ─── Game Objects ─────────────────────────────────────────────────────────────
@@ -36,9 +36,10 @@ export interface Thing {
   name: string;
   type: string;
   speed: number;
+  rotationSpeed?: number;
   health?: number;
   transform: Transform;
-  velocity?: Vector3 | Vector2;
+  velocity?: Vector3;
   gameplayTags: string[];
   userData: Record<string, unknown>;
   [key: string]: unknown;

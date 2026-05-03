@@ -1,5 +1,5 @@
 import type { Server as IOServer } from "socket.io";
-import type { Player, GameState, Thing, GameUpdatePayload } from "../types/index";
+import type { Player, GameState, Thing, GameUpdatePayload, Rotation } from "../types/index";
 import { BaseGame } from "./BaseGame";
 
 
@@ -19,7 +19,6 @@ export class BasicGame extends BaseGame {
     // Update player positions based on their input
     for (const playerId in payload.currentRoom.players) {
       const player = payload.currentRoom.players[playerId];
-      player.speed = player.speed || 10; // Default speed if not set
       const position = player.transform.position as { x: number; y: number };
       if (player.input) {
         const speed = player.speed || 10;
@@ -37,6 +36,19 @@ export class BasicGame extends BaseGame {
         }
       }
 
+      const rotation = player.transform.rotation as Rotation;
+      if (player.input) {
+        const rotationSpeed = player.rotationSpeed || Math.PI;
+        if (player.input.keyboard["rotateLeft"]) {
+          rotation.pitch = rotation.pitch - rotationSpeed * (payload.delta / 1000);
+          rotation.pitch %= 2 * Math.PI;
+        }
+        if (player.input.keyboard["rotateRight"]) {
+          rotation.pitch = rotation.pitch + rotationSpeed * (payload.delta / 1000);
+          rotation.pitch %= 2 * Math.PI;
+        }
+      }
+      
       payload.updatedPlayers.push(player);
     }
   }

@@ -8,6 +8,13 @@ import { ConnectionInfo } from "../connectioninfo";
 
 // ─── Game Management ─────────────────────────────────────────────────────────
 
+export function accumulatePlayTime(connectionInfo: ConnectionInfo): void {
+  const game = serverState.games.get(connectionInfo.gameId);
+  if (game) {
+    game.addPlayTime(Date.now() - connectionInfo.connectedAt);
+  }
+}
+
 export function removePlayerFromGame(connectionInfo: ConnectionInfo): void {
   const game = serverState.games.get(connectionInfo.gameId);
   if (game) {
@@ -16,13 +23,14 @@ export function removePlayerFromGame(connectionInfo: ConnectionInfo): void {
   }
 }
 
-/** List all active games with their player counts */
+/** List all active games with stats */
 export function listGames(req: Request, res: Response): void {
     const gameList = Array.from(serverState.games.values()).map((g) => ({
       gameId: g.gameId,
       gameType: g.gameType,
       name: g.instance.name,
       playerCount: g.getPlayerCount(),
+      playTime: g.getPlayTime(),
     }));
     res.json({ games: gameList, availableTypes: Array.from(serverState.availableGames.keys()) });
 }
@@ -119,4 +127,15 @@ export function summary(_req: Request, res: Response): void {
     }
   }
   res.json({ totalPlayers, activeGames });
+}
+
+/** Get the total play time for a specific game */
+export function getPlayTime(req: Request, res: Response): void {
+  const gameId = req.params.gameId as string;
+  const game = serverState.games.get(gameId);
+  if (!game) {
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+  res.json({ playTime: game.getPlayTime() });
 }

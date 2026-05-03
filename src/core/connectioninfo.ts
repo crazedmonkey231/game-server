@@ -15,6 +15,7 @@ export class ConnectionInfo {
   name: string;
   socket: Socket;
   player: Player;
+  connectedAt: number = Date.now();
 
   constructor(socket: Socket, name: string = "Anonymous", gameId: string = "blank-game", roomId: string = "lobby") {
     this.socket = socket;

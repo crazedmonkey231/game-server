@@ -2,7 +2,7 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
 import { RoomController } from "./roomcontroller";
 import { isSafeKey } from "../utils";
-import { playerNotify, playersInGame, playersInAllGames, playersInPerGames, summary, listGames, addGame, removeGameById } from "./managers/game";
+import { playerNotify, playersInGame, playersInAllGames, playersInPerGames, summary, listGames, addGame, removeGameById, getPlayTime } from "./managers/game";
 import { submitEntry, getLeaderboardForGame } from "./managers/leaderboard";
 import { getGlobalStats, searchProfile, createAccount, login, deleteAccount } from "./managers/profile";
 import { onConnection } from "./managers/connection";
@@ -58,14 +58,16 @@ export class GameServer {
     app.post("/api/leaderboard/:gameId/submit", submitEntry);
     app.get("/api/leaderboard/:gameId", getLeaderboardForGame);
 
-    app.post("/api/gameManager/playerNotify", (req, res) => playerNotify(req, res, io));
-    app.get("/api/gameManager/playersInGame/:gameId/:roomId", playersInGame);
+    app.get("/api/gameManager/:gameId/:roomId/players", playersInGame);
     app.get("/api/gameManager/playersInAllGames", playersInAllGames);
     app.get("/api/gameManager/playersInPerGames", playersInPerGames);
     app.get("/api/gameManager/summary", summary);
     app.get("/api/gameManager/games", listGames);
+    app.get("/api/gameManager/:gameId/players", playersInGame);
+    app.get("/api/gameManager/:gameId/playTime", getPlayTime);
     app.post("/api/gameManager/games", (req, res) => addGame(req, res, io));
-    app.delete("/api/gameManager/games/:gameId", removeGameById);
+    app.post("/api/gameManager/playerNotify", (req, res) => playerNotify(req, res, io));
+    app.delete("/api/gameManager/:gameId", removeGameById);
 
     // Handle Socket.IO connections
     io.on("connection", (socket) => onConnection(io, socket));

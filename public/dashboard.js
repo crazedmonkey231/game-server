@@ -268,7 +268,7 @@ async function fetchGames() {
     tbody.innerHTML = '';
     const gameList = data.games || [];
     if (gameList.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No games registered</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No games registered</td></tr>';
       return;
     }
     for (const game of gameList) {
@@ -289,12 +289,15 @@ async function fetchGames() {
       tdName.textContent = game.name;
       const tdCount = document.createElement('td');
       tdCount.textContent = game.playerCount;
+      const tdPlayTime = document.createElement('td');
+      tdPlayTime.textContent = formatPlaytime(game.playTime);
       const tdAction = document.createElement('td');
       tdAction.appendChild(removeBtn);
       tr.appendChild(tdId);
       tr.appendChild(tdType);
       tr.appendChild(tdName);
       tr.appendChild(tdCount);
+      tr.appendChild(tdPlayTime);
       tr.appendChild(tdAction);
       tbody.appendChild(tr);
     }
@@ -309,7 +312,7 @@ async function fetchGames() {
 
 async function removeGame(gameId) {
   try {
-    await apiFetch(`/api/gameManager/games/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
+    await apiFetch(`/api/gameManager/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
     fetchGames();
     showBanner(`Game "${gameId}" removed.`, 'success');
   } catch (err) {

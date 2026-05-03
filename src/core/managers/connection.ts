@@ -6,7 +6,7 @@ import { serverTickRate } from "../gameserver";
 import { createProfile, deleteProfile } from "./profile";
 import { RoomController } from "../roomcontroller";
 import { serverState } from "../serverstate";
-import { removePlayerFromGame } from "./game";
+import { accumulatePlayTime, removePlayerFromGame } from "./game";
 
 // ─── Connection Management ─────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ export function onConnection(io: IOServer, socket: Socket): void {
 export function deleteConnection(socketId: string): void {
   const connection = serverState.connections.get(socketId);
   if (connection) {
+    accumulatePlayTime(connection);
     removePlayerFromGame(connection);
     connection.socket.disconnect(true);
     serverState.connections.delete(socketId);

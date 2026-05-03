@@ -60,6 +60,7 @@ export function getThing(id: string, name: string, type: string): Thing {
     id,
     name: name || `Thing_${id}`,
     speed: 0,
+    rotationSpeed: 3,
     type,
     gameplayTags: [],
     transform: {
@@ -85,5 +86,6 @@ export function getPlayer(id: string, name: string, isAi = false): Player {
     health: 100,
     score: 0,
     credits: 0,
+    speed: 10,
   };
 }
