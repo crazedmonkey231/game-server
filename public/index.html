@@ -14,6 +14,7 @@
         <h1 class="toolbar-title">OrbitWorks</h1>
         <p class="toolbar-subtitle">Game Server Development Dashboard</p>
       </div>
+      <div id="auth-status" class="auth-status auth-status-off">Not logged in</div>
     </header>
 
     <!-- Banner notification -->
@@ -75,8 +76,8 @@
     <!-- ── Tab: Events ───────────────────────────────────────────────────────── -->
     <main class="dashboard tab-panel" id="tab-events">
 
-      <!-- Trigger Event -->
-      <div class="card">
+      <!-- Trigger Event (admin only) -->
+      <div class="card auth-only" id="trigger-event-card">
         <h2>Trigger Event</h2>
         <form id="trigger-event-form">
           <div class="form-group">
@@ -97,6 +98,11 @@
           </div>
           <button type="submit" class="btn-primary">Trigger Event</button>
         </form>
+      </div>
+
+      <!-- Locked notice (shown when not logged in) -->
+      <div class="card auth-locked-notice" id="trigger-event-locked">
+        <p class="locked-msg">⚙️ Log in as an admin to trigger events.</p>
       </div>
 
       <!-- Active Events -->
@@ -138,8 +144,8 @@
     <!-- ── Tab: Games ─────────────────────────────────────────────────────────── -->
     <main class="dashboard tab-panel" id="tab-games">
 
-      <!-- Register Game -->
-      <div class="card">
+      <!-- Register Game (admin only) -->
+      <div class="card auth-only" id="register-game-card">
         <h2>Register Game</h2>
         <form id="add-game-form">
           <div class="form-group">
@@ -154,17 +160,31 @@
         </form>
       </div>
 
+      <!-- Locked notice (shown when not logged in) -->
+      <div class="card auth-locked-notice" id="register-game-locked">
+        <p class="locked-msg">⚙️ Log in as an admin to register games.</p>
+      </div>
+
       <!-- Active Games -->
       <div class="card games-card">
         <h2>Active Games</h2>
         <table>
           <thead>
-            <tr><th>Game ID</th><th>Type</th><th>Name</th><th>Players</th><th>Playtime</th><th>Action</th></tr>
+            <tr><th>Game ID</th><th>Type</th><th>Name</th><th>Players</th><th>Playtime</th><th>Rooms</th><th>Action</th></tr>
           </thead>
           <tbody id="games-list-body">
             <tr class="empty-row"><td colspan="7">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Game Rooms drill-down (hidden until a game is selected) -->
+      <div class="card rooms-card" id="game-rooms-card" style="display:none;">
+        <div class="rooms-card-header">
+          <h2 id="game-rooms-title">Rooms</h2>
+          <button class="btn-close-rooms" id="close-rooms-btn" title="Close">✕</button>
+        </div>
+        <div id="game-rooms-body"></div>
       </div>
 
     </main>
@@ -175,6 +195,7 @@
       <!-- Admin Login -->
       <div class="card">
         <h2>Admin Login</h2>
+        <div id="login-status" class="login-status" style="display:none;"></div>
         <form id="login-form" class="login-form">
           <div class="form-group">
             <label for="username">Username</label>
@@ -186,6 +207,7 @@
           </div>
           <button type="submit" class="btn-primary">Login</button>
         </form>
+        <button id="logout-btn" class="btn-logout auth-only" style="display:none;">Logout</button>
       </div>
 
     </main>

@@ -8,6 +8,8 @@ import { ConnectionInfo } from "../connectioninfo";
 
 // ─── Game Management ─────────────────────────────────────────────────────────
 
+const DEFAULT_PLAYER_HEALTH = 100;
+
 export function accumulatePlayTime(connectionInfo: ConnectionInfo): void {
   const game = serverState.games.get(connectionInfo.gameId);
   if (game) {
@@ -138,4 +140,41 @@ export function getPlayTime(req: Request, res: Response): void {
     return;
   }
   res.json({ playTime: game.getPlayTime() });
+}
+
+/** List all rooms in a game with their players and things */
+export function listGameRooms(req: Request, res: Response): void {
+  const gameId = req.params.gameId as string;
+  if (!isSafeKey(gameId)) {
+    res.status(400).json({ error: "Invalid gameId" });
+    return;
+  }
+  const game = serverState.games.get(gameId);
+  if (!game) {
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+  const rooms = Object.entries(game.gameStates).map(([roomId, state]) => ({
+    roomId,
+    started: state.started,
+    paused: state.paused,
+    gameOver: state.gameOver,
+    timer: state.timer,
+    playerCount: Object.values(state.players).filter((p) => p.userData.isAi !== true).length,
+    thingCount: Object.keys(state.things).length,
+    players: Object.values(state.players).map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: p.score,
+      health: p.health ?? DEFAULT_PLAYER_HEALTH,
+      isAi: p.userData.isAi === true,
+    })),
+    things: Object.values(state.things).map((t) => ({
+      id: t.id,
+      name: t.name,
+      type: t.type,
+      health: t.health,
+    })),
+  }));
+  res.json({ gameId, rooms });
 }

@@ -2,7 +2,7 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
 import { RoomController } from "./roomcontroller";
 import { isSafeKey } from "../utils";
-import { playerNotify, playersInGame, playersInAllGames, playersInPerGames, summary, listGames, addGame, removeGameById, getPlayTime } from "./managers/game";
+import { playerNotify, playersInGame, playersInAllGames, playersInPerGames, summary, listGames, addGame, removeGameById, getPlayTime, listGameRooms } from "./managers/game";
 import { submitEntry, getLeaderboardForGame } from "./managers/leaderboard";
 import { getGlobalStats, searchProfile, createAccount, login, deleteAccount } from "./managers/profile";
 import { onConnection } from "./managers/connection";
@@ -58,6 +58,7 @@ export class GameServer {
     app.post("/api/leaderboard/:gameId/submit", submitEntry);
     app.get("/api/leaderboard/:gameId", getLeaderboardForGame);
 
+    app.get("/api/gameManager/:gameId/rooms", listGameRooms);
     app.get("/api/gameManager/:gameId/:roomId/players", playersInGame);
     app.get("/api/gameManager/playersInAllGames", playersInAllGames);
     app.get("/api/gameManager/playersInPerGames", playersInPerGames);

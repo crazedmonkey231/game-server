@@ -305,7 +305,225 @@ button {
   grid-column: 1 / -1;
 }
 
-/* ── Games card ─────────────────────────────────────────────────────────────── */
-.games-card {
+/* ── Auth status (toolbar) ─────────────────────────────────────────────────── */
+.auth-status {
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.auth-status-on {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.auth-status-off {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+/* ── Auth-gated cards ───────────────────────────────────────────────────────── */
+.auth-only {
+  display: none;
+}
+
+body.logged-in .auth-only {
+  display: block;
+}
+
+/* Locked notice card shown when not logged in */
+.auth-locked-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  box-shadow: none;
+}
+
+body.logged-in .auth-locked-notice {
+  display: none;
+}
+
+.locked-msg {
+  color: #6c757d;
+  font-size: 14px;
+  font-style: italic;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Login status & logout ──────────────────────────────────────────────────── */
+.login-status {
+  background-color: #d4edda;
+  color: #155724;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.btn-logout {
+  background-color: #dc3545;
+  color: #fff;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.15s;
+}
+
+.btn-logout:hover {
+  background-color: #c82333;
+}
+
+/* ── Disabled remove button ─────────────────────────────────────────────────── */
+.btn-remove:disabled {
+  border-color: #adb5bd;
+  color: #adb5bd;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+/* ── Rooms button ───────────────────────────────────────────────────────────── */
+.btn-rooms {
+  background: none;
+  border: 1px solid #007bff;
+  color: #007bff;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  width: auto;
+}
+
+.btn-rooms:hover {
+  background-color: #007bff;
+  color: #fff;
+}
+
+/* ── Game rooms drill-down card ─────────────────────────────────────────────── */
+.rooms-card {
   grid-column: 1 / -1;
+}
+
+.rooms-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.rooms-card-header h2 {
+  margin-bottom: 0;
+}
+
+.btn-close-rooms {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  width: auto;
+}
+
+.btn-close-rooms:hover {
+  color: #343a40;
+}
+
+.room-section {
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.room-section:last-child {
+  margin-bottom: 0;
+}
+
+.room-header {
+  background: #f8f9fa;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.room-id {
+  font-weight: 700;
+  font-size: 14px;
+  color: #343a40;
+}
+
+.room-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.room-sub-section {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.room-sub-section:last-child {
+  border-bottom: none;
+}
+
+.room-sub-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+  margin-bottom: 8px;
+}
+
+.id-cell {
+  font-family: monospace;
+  font-size: 12px;
+  color: #495057;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rooms-loading,
+.rooms-error,
+.rooms-empty {
+  font-style: italic;
+  color: #adb5bd;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.rooms-error {
+  color: #dc3545;
+}
+
+/* ── Muted badge ────────────────────────────────────────────────────────────── */
+.badge-muted {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+/* ── Warning badge ──────────────────────────────────────────────────────────── */
+.badge-warning {
+  background: #fff3cd;
+  color: #856404;
 }
