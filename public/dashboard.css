@@ -53,6 +53,7 @@ body {
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   padding: 20px 24px;
+  display: inline-table;
 }
 
 .card h2 {
