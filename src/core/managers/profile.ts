@@ -50,15 +50,18 @@ export function searchProfile(req: Request, res: Response): void {
 
 /** Log in to an existing profile or create a new one if it doesn't exist */
 export function login(req: Request, res: Response): void {
+  console.log("Login request received:", req.body);
   const { socketId, username } = req.body as { socketId?: string; username?: string };
   if (!socketId || !username) {
     res.status(400).json({ error: "Missing socketId or username" });
     return;
   }
   if (serverState.profiles.has(socketId)) {
-    res.status(400).json({ error: "Profile already exists for this socketId" });
+    const profile = serverState.profiles.get(socketId)!;
+    res.json({ success: true, profile });
     return;
   }
+  console.log(`Creating profile for socketId: ${socketId}, username: ${username}`);
   const profile = createProfile(socketId, username);
   res.json({ success: true, profile });
 }
