@@ -29,8 +29,12 @@ export function onConnection(io: IOServer, socket: Socket): void {
   // Add the player to the game and room
   let game = serverState.games.get(gameId);
   if (!game) {
-    const GameClass = serverState.availableGames.get(gameId)!;
-    game = new RoomController(socket.id, gameId, new GameClass(), io, serverTickRate);
+    const GameClass = serverState.availableGames.get(gameId);
+    if (!GameClass) {
+      socket.disconnect(true);
+      return;
+    }
+    game = new RoomController(gameId, gameId, new GameClass(), io, serverTickRate);
     serverState.games.set(gameId, game);
   }
   const socketRoomId = getRoomName(gameId, roomId);
