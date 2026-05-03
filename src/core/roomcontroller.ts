@@ -3,6 +3,11 @@ import { getPlayer, getRoomName } from "../utils";
 import type { Server as IOServer } from "socket.io";
 import { serverTickRate } from "./gameserver";
 
+interface RoomUpdate {
+  things: Thing[];
+  players: Player[];
+}
+
 /** The RoomController class is a wrapper around a specific game instance, managing its state, players, and rooms */
 export class RoomController {
   readonly gameId: string;
@@ -13,8 +18,7 @@ export class RoomController {
   private updateTimer: ReturnType<typeof setInterval>;
   private io: IOServer;
 
-  private updatedThings: Thing[] = [];
-  private updatedPlayers: Player[] = [];
+  private pendingUpdates: Record<string, RoomUpdate> = {};
 
   constructor(gameId: string, gameType: string, instance: IGame, io: IOServer, tickRate: number) {
     this.gameId = gameId;
@@ -42,6 +46,7 @@ export class RoomController {
         things: {},
       };
       this.instance.create(this.gameStates[roomId]);
+      this.pendingUpdates[roomId] = { things: [], players: [] };
     }
     return this.gameStates[roomId];
   }
@@ -49,15 +54,13 @@ export class RoomController {
   update(io: IOServer): void {
     for (const roomId in this.gameStates) {
       const currentRoomState = this.gameStates[roomId];
-      this.updatedThings = [];
-      this.updatedPlayers = [];
       this.instance.update({
         delta: serverTickRate,
         time: Date.now(),
         io,
         currentRoom: currentRoomState,
-        updatedPlayers: this.updatedPlayers,
-        updatedThings: this.updatedThings,
+        updatedPlayers: this.pendingUpdates[roomId].players,
+        updatedThings: this.pendingUpdates[roomId].things,
       });
       if (currentRoomState.gameOver) {
         io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
@@ -70,22 +73,23 @@ export class RoomController {
         delete this.gameStates[roomId];
         continue;
       }
-      if (this.updatedThings.length > 0 || this.updatedPlayers.length > 0) {
+      if (this.pendingUpdates[roomId].things.length > 0 || this.pendingUpdates[roomId].players.length > 0) {
         const serverUpdate: Partial<GameState> = {
           started: currentRoomState.started,
           timer: currentRoomState.timer,
           paused: currentRoomState.paused,
           gameOver: currentRoomState.gameOver,
-          players: this.updatedPlayers.reduce((acc, player) => {
+          players: this.pendingUpdates[roomId].players.reduce((acc, player) => {
             acc[player.id] = player;
             return acc;
           }, {} as Record<string, Player>),
-          things: this.updatedThings.reduce((acc, thing) => {
+          things: this.pendingUpdates[roomId].things.reduce((acc, thing) => {
             acc[thing.id] = thing;
             return acc;
           }, {} as Record<string, Thing>),
         };
         io.to(currentRoomState.roomName).emit("serverUpdate", serverUpdate);
+        this.pendingUpdates[roomId] = { things: [], players: [] }; // Clear pending updates after emitting
       }
     }
   }
@@ -138,6 +142,7 @@ export class RoomController {
 
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
+    this.pendingUpdates[roomId].things.push(thing);
     this.emit(roomId, "thingAdded", { thingId: thing.id, roomId });
   }
 
@@ -199,5 +204,24 @@ export class RoomController {
   deleteRoom(roomId: string): void {
     this.emit(roomId, "roomClosed", { roomId });
     delete this.gameStates[roomId];
+  }
+
+  applyDamage(roomId: string, attackerId: string, targetId: string, amount: number): void {
+    const roomState = this.getGameState(roomId);
+    const target = roomState.players[targetId];
+    if (!target) return;
+    target.health = (target.health || 100) - amount;
+    if (target.health <= 0) {
+      target.health = 0;
+      this.emit(roomId, "playerDied", { playerId: targetId, roomId });
+      if (attackerId !== targetId) {
+        const attacker = roomState.players[attackerId];
+        if (attacker) {
+          attacker.score = (attacker.score || 0) + 1;
+          this.pendingUpdates[roomId].players.push(attacker);
+        }
+      }
+    }
+    this.pendingUpdates[roomId].players.push(target);
   }
 }

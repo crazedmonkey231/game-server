@@ -34,6 +34,14 @@ export class ConnectionInfo {
       this.player.input = input;
     });
 
+    socket.on("damage", (data: { amount: number; targetId: string }) => {
+      const { amount, targetId } = data;
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        game.applyDamage(this.roomId, this.player.id, targetId, amount);
+      }
+    });
+
     // Listen for room change requests and move the player to the new room
     socket.on("changeRoom", (newRoomId: string) => {
       const oldRoomName = getRoomName(this.gameId, this.roomId);
