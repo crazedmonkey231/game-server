@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import type { Player, Thing, ColorData } from "../types/index";
 
+/** Generates a unique room name based on game ID and room ID */
 export function getRoomName(gameId: string, roomId: string): string {
   return `${gameId}:${roomId}`;
 }
@@ -22,6 +23,7 @@ export function isSafeGameId(key: string): boolean {
   );
 }
 
+/** Validates room ID format */
 export function isValidRoomId(roomId: string): boolean {
   return roomId === "sandbox" || roomId === "lobby" || roomId.startsWith("room");
 }

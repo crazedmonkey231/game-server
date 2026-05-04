@@ -34,5 +34,8 @@ export const serverState: ServerState = {
   },
   leaderboard: new Map<string, LeaderboardEntry[]>(),
   games: new Map<string, RoomController>(),
-  availableGames: new Map<string, new () => IGame>([["sandbox", BlankGame], ["basic-game", BasicGame]]),
+  availableGames: new Map<string, new () => IGame>([
+    ["sandbox", BlankGame], 
+    ["basic-game", BasicGame]
+  ]),
 };

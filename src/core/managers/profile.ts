@@ -48,7 +48,7 @@ export function searchProfile(req: Request, res: Response): void {
   } 
 }
 
-/** Log in to an existing profile or create a new one if it doesn't exist */
+/** Log in to an existing profile */
 export function login(req: Request, res: Response): void {
   console.log("Login request received:", req.body);
   const { socketId, username } = req.body as { socketId?: string; username?: string };
@@ -61,9 +61,7 @@ export function login(req: Request, res: Response): void {
     res.json({ success: true, profile });
     return;
   }
-  console.log(`Creating profile for socketId: ${socketId}, username: ${username}`);
-  const profile = createProfile(socketId, username);
-  res.json({ success: true, profile });
+  res.status(404).json({ error: "Profile not found" });
 }
 
 /** Delete a profile from the server state */
