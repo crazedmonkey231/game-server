@@ -345,6 +345,10 @@ async function fetchGames() {
       roomsBtn.className = 'btn-rooms';
       roomsBtn.textContent = 'Rooms';
       roomsBtn.dataset.gameId = game.gameId;
+      if (!currentProfile) {
+        roomsBtn.disabled = true;
+        roomsBtn.title = 'Login required';
+      }
 
       const tdId = document.createElement('td');
       tdId.textContent = game.gameId;

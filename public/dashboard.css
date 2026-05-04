@@ -413,6 +413,14 @@ body.logged-in .auth-locked-notice {
   color: #fff;
 }
 
+.btn-rooms:disabled {
+  border-color: #adb5bd;
+  color: #adb5bd;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.65;
+}
+
 /* ── Game rooms drill-down card ─────────────────────────────────────────────── */
 .rooms-card {
   grid-column: 1 / -1;
