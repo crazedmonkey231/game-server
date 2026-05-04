@@ -46,14 +46,14 @@ export class GameServer {
     // Set up API routes
     app.get("/api/globalStats", getGlobalStats);
 
-    app.post("/api/eventManager/triggerEvent", triggerEvent);
     app.get("/api/eventManager/getEvents/:gameId", getEvents);
+    app.post("/api/eventManager/triggerEvent", triggerEvent);
     app.delete("/api/eventManager/removeEvent/:gameId/:type", removeEvent);
 
-    app.get("/api/profile/search/:socketId", searchProfile);
-    app.post("/api/profile/createAccount", createAccount);
     app.post("/api/profile/login", login);
+    app.post("/api/profile/createAccount", createAccount);
     app.post("/api/profile/deleteAccount", deleteAccount);
+    app.get("/api/profile/search/:socketId", searchProfile);
 
     app.post("/api/leaderboard/:gameId/submit", submitEntry);
     app.get("/api/leaderboard/:gameId", getLeaderboardForGame);

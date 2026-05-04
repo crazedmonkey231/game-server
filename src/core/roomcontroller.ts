@@ -68,17 +68,6 @@ export class RoomController {
         updatedPlayers: this.pendingUpdates[roomId].players,
         updatedThings: this.pendingUpdates[roomId].things,
       });
-      if (currentRoomState.gameOver) {
-        io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
-        this.movePlayersToRoom(roomId, "lobby");
-        io.to(getRoomName(this.gameId, "lobby")).emit("playersMoved", { toRoom: "lobby" });
-        delete this.gameStates[roomId];
-        continue;
-      }
-      if (roomId !== "lobby" && this.getPlayerCountInRoom(roomId) === 0) {
-        delete this.gameStates[roomId];
-        continue;
-      }
       if (this.pendingUpdates[roomId].things.length > 0 || this.pendingUpdates[roomId].players.length > 0) {
         const serverUpdate: Partial<GameState> = {
           started: currentRoomState.started,
@@ -96,6 +85,17 @@ export class RoomController {
         };
         io.to(currentRoomState.roomName).emit("serverUpdate", serverUpdate);
         this.pendingUpdates[roomId] = { things: [], players: [] }; // Clear pending updates after emitting
+      }
+      if (currentRoomState.gameOver) {
+        io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
+        this.movePlayersToRoom(roomId, "lobby");
+        io.to(getRoomName(this.gameId, "lobby")).emit("playersMoved", { toRoom: "lobby" });
+        delete this.gameStates[roomId];
+        continue;
+      }
+      if (!this.instance.isPersistent && roomId !== "lobby" && this.getPlayerCountInRoom(roomId) === 0) {
+        delete this.gameStates[roomId];
+        continue;
       }
     }
   }
@@ -130,7 +130,7 @@ export class RoomController {
   addPlayer(roomId: string, player: Player): void {
     if (!this.gameStates[roomId]) this.addGameState(roomId);
     this.gameStates[roomId].players[player.id] = player;
-    this.emit(roomId, "playerJoined", { playerId: player.id, roomId });
+    this.emit(roomId, "playerJoined", { roomId, player });
   }
 
   addAiPlayer(roomId: string): void {
@@ -149,8 +149,9 @@ export class RoomController {
 
   removePlayer(roomId: string, playerId: string): void {
     if (!this.gameStates[roomId]) return;
+    const player = this.gameStates[roomId].players[playerId];
     delete this.gameStates[roomId].players[playerId];
-    this.emit(roomId, "playerLeft", { playerId, roomId });
+    this.emit(roomId, "playerLeft", { roomId, player });
     if (
       this.getPlayerCountInRoom(roomId) === 0 &&
       roomId !== "lobby" &&
@@ -164,17 +165,18 @@ export class RoomController {
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
     this.pendingUpdates[roomId].things.push(thing);
-    this.emit(roomId, "thingAdded", { thingId: thing.id, roomId });
+    this.emit(roomId, "thingAdded", { roomId, thing });
   }
 
   removeThing(roomId: string, thingId: string): void {
+    const thing = this.getGameState(roomId).things[thingId];
     delete this.getGameState(roomId).things[thingId];
-    this.emit(roomId, "thingRemoved", { thingId, roomId });
+    this.emit(roomId, "thingRemoved", { roomId, thing });
   }
 
   getPlayers(roomId: string): Player[] {
     const players = this.getGameState(roomId).players;
-    return Object.values(players).filter((p) => p.userData.isAi !== true);
+    return Object.keys(players).map((playerId) => players[playerId]);
   }
 
   getPlayersNoAi(roomId: string): Player[] {

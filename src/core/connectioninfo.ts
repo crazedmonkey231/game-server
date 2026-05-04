@@ -1,7 +1,7 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer, Socket } from "socket.io";
-import { Input, Player } from "../types";
-import { getPlayer, getRoomName } from "../utils";
+import { Input, Player, Transform } from "../types";
+import { getPlayer, getRoomName, getThing, makeId } from "../utils";
 import { addLeaderboardEntry } from "./managers/leaderboard";
 import { deleteConnection } from "./managers/connection";
 import { serverState } from "./serverstate";
@@ -35,11 +35,30 @@ export class ConnectionInfo {
       this.player.input = input;
     });
 
+    // Listen for requests to change score and update the player's score accordingly
+    socket.on("changeScore", (amount: number) => {
+      this.player.score = Math.max(0, this.player.score + amount);
+    });
+
+    // Listen for damage events from the client and apply damage to the target player in the game
     socket.on("damage", (data: { amount: number; targetId: string }) => {
       const { amount, targetId } = data;
       const game = serverState.games.get(this.gameId);
       if (game) {
         game.applyDamage(this.roomId, this.player.id, targetId, amount);
+      }
+    });
+
+    // Listen for spawn requests from the client
+    socket.on("spawnThing", (data: { thingType: string, transform: Transform, tags?: string[] }) => {
+      const { thingType, transform, tags } = data;
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        const thing = getThing(makeId(), thingType, thingType, tags);
+        if (thing) {
+          thing.transform = transform;
+          game.addThing(this.roomId, thing);
+        }
       }
     });
 
@@ -100,6 +119,54 @@ export class ConnectionInfo {
           }
         }
         serverState.profiles.set(socket.id, profile);
+      }
+    });
+
+    // Listen for requests to get the current game state for the player's room
+    socket.on("getGameState", () => {
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        const state = game.getGameState(this.roomId);
+        socket.emit("gameState", state);
+      }
+    });
+
+    // Listen for requests to list all rooms in the current game
+    socket.on("listGameRooms", () => {
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        const rooms = Object.entries(game.gameStates).map(([roomId, state]) => ({
+          roomId,
+          started: state.started,
+          paused: state.paused,
+          gameOver: state.gameOver,
+          timer: state.timer,
+          playerCount: Object.values(state.players).filter((p) => p.userData.isAi !== true).length,
+          thingCount: Object.keys(state.things).length,
+          players: Object.values(state.players).map((p) => ({
+            id: p.id,
+            name: p.name,
+          })),
+        }));
+        socket.emit("gameRooms", rooms);
+      }
+    });
+
+    // Listen for request for total players in the current game
+    socket.on("getPlayerCount", () => {
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        const totalPlayers = game.getPlayerCount();
+        socket.emit("playerCount", totalPlayers);
+      }
+    });
+
+    // Listen for request for player counts per room in the current game
+    socket.on("getPlayerCountPerRoom", () => {
+      const game = serverState.games.get(this.gameId);
+      if (game) {
+        const counts = game.getPlayerCountPerRoom();
+        socket.emit("playerCountPerRoom", counts);
       }
     });
   }
