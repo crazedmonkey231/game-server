@@ -1,3 +1,4 @@
+import type { Application } from "express";
 import type { Server as IOServer } from "socket.io";
 
 // ─── Geometry ────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ export interface Thing {
   health?: number;
   transform: Transform;
   velocity?: Vector3;
-  gameplayTags: string[];
+  tags: string[];
   userData: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -72,9 +73,7 @@ export interface Player extends Thing {
 // ─── Global Stats ─────────────────────────────────────────────────────────────
 
 export interface GlobalStats {
-  globalCredits: number;
   globalPlayTime: number;
-  [key: string]: unknown;
 }
 
 // ─── Room / Game State ────────────────────────────────────────────────────────
@@ -132,31 +131,37 @@ export interface EventEntry {
   length: number;
 }
 
-// ─── Profiles ─────────────────────────────────────────────────────────────────
+// ─── Accounts ─────────────────────────────────────────────────────────────────
 
-export const profileStandings: Record<string, string> = {
+export const accountStandings: Record<string, string> = {
   GREEN: "Rookie",
   BLUE: "Veteran",
   PURPLE: "Elite",
   ORANGE: "Legend",
   RED: "Mythic",
 };
-export type Standing = keyof typeof profileStandings;
+export type Standing = keyof typeof accountStandings;
 
-export interface ProfileStats {
-  credits: number;
+export interface AccountStats {
   gamesPlayed: number;
   gamesWon: number;
   totalKills: number;
   totalDeaths: number;
   standing?: Standing;
-  [key: string]: unknown;
 }
 
-export interface Profile {
+export interface Account {
   id: string;
   name: string;
+  bankAccountId: string;
   createdAt: Date;
-  stats: ProfileStats;
+  stats: AccountStats;
 }
 
+// ─── Services ─────────────────────────────────────────────────────────────────
+
+export interface Service {
+  name: string;
+  registerRoutes(app: Application, io: IOServer): void;
+  clear(): void;
+}

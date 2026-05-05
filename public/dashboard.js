@@ -549,19 +549,19 @@ async function login(e) {
   const socketId = document.getElementById('socketId').value.trim();
   if (!username || !socketId) return;
   try {
-    const data = await apiFetch('/api/profile/login', {
+    const data = await apiFetch('/api/accounts/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ socketId, username }),
+      body: JSON.stringify({ socketId, name: username }),
     });
     if (data.success) {
-      currentProfile = data.profile;
+      currentProfile = data.account;
       saveAuthState();
       updateAuthUI();
       showBanner('Login successful!', 'success');
       document.getElementById('login-form').reset();
     } else {
-      showBanner(`Login failed: ${data.message}`, 'error');
+      showBanner(`Login failed: ${data.error}`, 'error');
     }
   } catch (err) {
     showBanner(`Login error: ${err.message}`, 'error');

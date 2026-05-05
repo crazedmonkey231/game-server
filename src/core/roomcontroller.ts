@@ -129,6 +129,7 @@ export class RoomController {
 
   addPlayer(roomId: string, player: Player): void {
     if (!this.gameStates[roomId]) this.addGameState(roomId);
+    this.pendingUpdates[roomId].players.push(player);
     this.gameStates[roomId].players[player.id] = player;
     this.emit(roomId, "playerJoined", { roomId, player });
   }
@@ -151,7 +152,7 @@ export class RoomController {
     if (!this.gameStates[roomId]) return;
     const player = this.gameStates[roomId].players[playerId];
     delete this.gameStates[roomId].players[playerId];
-    this.emit(roomId, "playerLeft", { roomId, player });
+    this.emit(roomId, "playerLeft", { player });
     if (
       this.getPlayerCountInRoom(roomId) === 0 &&
       roomId !== "lobby" &&
@@ -165,13 +166,14 @@ export class RoomController {
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
     this.pendingUpdates[roomId].things.push(thing);
-    this.emit(roomId, "thingAdded", { roomId, thing });
+    this.gameStates[roomId].things[thing.id] = thing;
+    this.emit(roomId, "thingAdded", { thing });
   }
 
   removeThing(roomId: string, thingId: string): void {
     const thing = this.getGameState(roomId).things[thingId];
     delete this.getGameState(roomId).things[thingId];
-    this.emit(roomId, "thingRemoved", { roomId, thing });
+    this.emit(roomId, "thingRemoved", { thing });
   }
 
   getPlayers(roomId: string): Player[] {
@@ -227,13 +229,17 @@ export class RoomController {
       }
       toRoom.players[playerId] = player;
       delete fromRoom.players[playerId];
-      this.emit(fromRoomId, "playerLeft", { playerId, roomId: fromRoomId });
-      this.emit(toRoomId, "playerJoined", { playerId, roomId: toRoomId });
+      this.emit(fromRoomId, "playerLeft", { player });
+      this.emit(toRoomId, "playerJoined", { player });
     }
   }
 
   deleteRoom(roomId: string): void {
     this.emit(roomId, "roomClosed", { roomId });
     delete this.gameStates[roomId];
+  }
+
+  hasRoom(roomId: string): boolean {
+    return !!this.gameStates[roomId];
   }
 }
