@@ -8,7 +8,7 @@ export const serverTickRate = 1000 / 30; // 30 ticks per second
 
 /** The main game server configuration interface */
 export interface GameServerConfig {
-  app:Application; 
+  app: Application; 
   io: IOServer;
 } 
 

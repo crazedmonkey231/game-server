@@ -246,6 +246,8 @@ export class GameService implements Service {
       paused: state.paused,
       gameOver: state.gameOver,
       timer: state.timer,
+      playerCount: Object.values(state.players).length,
+      thingCount: Object.keys(state.things).length,
       players: Object.values(state.players),
       things: Object.values(state.things),
     }));
