@@ -683,6 +683,8 @@ function refreshAll() {
   // Refresh account info only when its tab is visible
   const acctPanel = document.getElementById('tab-account');
   if (acctPanel && acctPanel.classList.contains('active')) fetchAccountInfo();
+  // Refresh leaderboard only when its tab is visible
+  const lbPanel = document.getElementById('tab-leaderboard');
   if (lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
   // Refresh rooms drill-down if currently visible
   const roomsCard = document.getElementById('game-rooms-card');
