@@ -11,8 +11,10 @@ export class ConnectionService implements Service {
   private connections: Map<string, PlayerSession> = new Map<string, PlayerSession>();
   private io?: IOServer;
 
-  constructor() {
+  constructor() { }
 
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
   }
   
   addConnection(io: IOServer, socket: Socket): void {
@@ -57,9 +59,5 @@ export class ConnectionService implements Service {
   clear(): void {
     this.connections.forEach((connection) => connection.socket.disconnect(true));
     this.connections.clear();
-  }
-
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
   }
 }

@@ -8,8 +8,8 @@ interface RoomUpdate {
   players: Player[];
 }
 
-/** The RoomController class is a wrapper around a specific game instance, managing its state, players, and rooms */
-export class RoomController {
+/** The MatchManager class is a wrapper around a specific game instance and its states */
+export class MatchManager {
   private totalPlayTime = 0;
 
   readonly gameId: string;

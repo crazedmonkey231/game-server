@@ -4,13 +4,20 @@ import { makeId } from "../../utils";
 import { Account, Service } from "../../types";
 import { serverState } from "../serverstate";
 
+/** This file defines the AccountsService which manages player accounts and their associated data. */
 export class AccountsService implements Service {
   name = "Accounts";
   private accounts: Map<string, Account> = new Map<string, Account>();
   private io?: IOServer;
 
-  constructor() {
+  constructor() { }
 
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
+    app.get("/api/accounts/searchAccount/:socketId", this.apiSearchAccountRequest.bind(this));
+    app.post("/api/accounts/createAccount", this.apiCreateAccountRequest.bind(this));
+    app.post("/api/accounts/deleteAccount", this.apiDeleteAccountRequest.bind(this));
+    app.post("/api/accounts/login", this.apiLoginRequest.bind(this));
   }
   
   createAccount(id: string, name: string): Account {
@@ -48,15 +55,6 @@ export class AccountsService implements Service {
 
   clear(): void {
     this.accounts.clear();
-  }
-
-  /** API route handlers for account operations */
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
-    app.get("/api/accounts/searchAccount/:socketId", this.apiSearchAccountRequest.bind(this));
-    app.post("/api/accounts/createAccount", this.apiCreateAccountRequest.bind(this));
-    app.post("/api/accounts/deleteAccount", this.apiDeleteAccountRequest.bind(this));
-    app.post("/api/accounts/login", this.apiLoginRequest.bind(this));
   }
 
   private apiCreateAccountRequest(req: Request, res: Response): void {

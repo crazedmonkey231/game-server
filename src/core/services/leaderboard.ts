@@ -3,13 +3,18 @@ import type { Server as IOServer } from "socket.io";
 import { LeaderboardEntry, Service } from "../../types";
 import { isSafeKey } from "../../utils";
 
+/** The LeaderboardService class manages leaderboards for different games, allowing players to submit their scores and retrieve the top scores for each game. */
 export class LeaderboardService implements Service {
   name = "Leaderboard";
   private leaderboard: Map<string, LeaderboardEntry[]> = new Map<string, LeaderboardEntry[]>();
   private io?: IOServer;
 
-  constructor() {
+  constructor() { }
 
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
+    app.post("/api/leaderboard/:gameId/submit", this.apiSubmitEntry.bind(this));
+    app.get("/api/leaderboard/:gameId", this.apiGetLeaderboardForGame.bind(this));
   }
 
   submit(gameId: string, name: string, score: number): { place: number; entry: LeaderboardEntry; leaderboard: LeaderboardEntry[] } {
@@ -32,12 +37,6 @@ export class LeaderboardService implements Service {
 
   clear(): void {
     this.leaderboard.clear();
-  }
-
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
-    app.post("/api/leaderboard/:gameId/submit", this.apiSubmitEntry.bind(this));
-    app.get("/api/leaderboard/:gameId", this.apiGetLeaderboardForGame.bind(this));
   }
 
   private apiSubmitEntry(req: Request, res: Response): void {

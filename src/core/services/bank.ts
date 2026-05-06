@@ -90,6 +90,7 @@ function calculateTotalValue(portfolio: Portfolio): number {
   return total;
 }
 
+/** This file defines the BankingService which manages bank accounts, portfolios, and transactions for player profiles. */
 export class BankingService implements Service {
   name = "Bank";
   private accounts: Record<string, BankAccount> = {};
@@ -105,6 +106,15 @@ export class BankingService implements Service {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+  }  
+  
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
+    app.get("/api/bank/:accountId", this.apiGetAccountRequest.bind(this));
+    app.get("/api/bank/:accountId/portfolio", this.apiPortfolioRequest.bind(this));
+    app.post("/api/bank/transaction", this.apiTransactionRequest.bind(this));
+    app.post("/api/bank/createAccount", this.apiCreateAccountRequest.bind(this));
+    app.delete("/api/bank/deleteAccount/:accountId", this.apiDeleteAccountRequest.bind(this));
   }
 
   private defaultBankPortfolio(): Portfolio {
@@ -245,16 +255,6 @@ export class BankingService implements Service {
   clear(): void {
     this.accounts = {};
     this.transactionHistory = [];
-  }
-
-  /** API route handlers for bank operations */
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
-    app.get("/api/bank/:accountId", this.apiGetAccountRequest.bind(this));
-    app.get("/api/bank/:accountId/portfolio", this.apiPortfolioRequest.bind(this));
-    app.post("/api/bank/transaction", this.apiTransactionRequest.bind(this));
-    app.post("/api/bank/createAccount", this.apiCreateAccountRequest.bind(this));
-    app.delete("/api/bank/deleteAccount/:accountId", this.apiDeleteAccountRequest.bind(this));
   }
 
   private apiGetAccountRequest(req: Request, res: Response): void {

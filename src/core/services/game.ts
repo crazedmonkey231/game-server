@@ -3,7 +3,7 @@ import type { Server as IOServer } from "socket.io";
 import { GameState, IGame, Service, Transform } from "../../types";
 import { BasicGame } from "../../games/BasicGame";
 import { BlankGame } from "../../games/BlankGame";
-import { RoomController } from "../roomcontroller";
+import { MatchManager } from "../roomcontroller";
 import { PlayerSession } from "../playersession";
 import { getPlayer, getRoomName, getThing, isSafeKey } from "../../utils";
 import { serverState } from "../serverstate";
@@ -37,16 +37,31 @@ interface PlayerNotifyRequest {
   data: unknown;
 }
 
+/** The GameService class manages game instances, player interactions, and game state updates. It serves as the core service for handling all game-related logic and communication with clients. */
 export class GameService implements Service {
   name = "GameManager";
-  private games: Map<string, RoomController> = new Map<string, RoomController>();
+  private games: Map<string, MatchManager> = new Map<string, MatchManager>();
   private availableGames: Map<string, new () => IGame> = new Map<string, new () => IGame>([
     ["sandbox", BlankGame], 
     ["basic-game", BasicGame]
   ]);
   private io?: IOServer;
 
-  constructor() {
+  constructor() { }
+
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
+    app.get("/api/gameManager/:gameId/rooms", this.apiListGameRooms.bind(this));
+    app.get("/api/gameManager/:gameId/:roomId/players", this.apiPlayersInGameRequest.bind(this));
+    app.get("/api/gameManager/playersInAllGames", this.apiPlayersInAllGames.bind(this));
+    app.get("/api/gameManager/playersInPerGames", this.apiPlayersInPerGames.bind(this));
+    app.get("/api/gameManager/summary", this.apiSummary.bind(this));
+    app.get("/api/gameManager/games", this.apiListGames.bind(this));
+    app.get("/api/gameManager/:gameId/players", this.apiPlayersInGame.bind(this));
+    app.get("/api/gameManager/:gameId/playTime", this.apiPlayTime.bind(this));
+    app.post("/api/gameManager/games", this.apiCreateGame.bind(this));
+    app.post("/api/gameManager/playerNotify", this.apiPlayerNotify.bind(this));
+    app.delete("/api/gameManager/:gameId", this.apiRemoveGameById.bind(this));
   }
 
   hasGame(gameId: string): boolean {
@@ -65,7 +80,7 @@ export class GameService implements Service {
     if (!GameClass) {
       return false;
     }
-    const game = new RoomController(gameId, gameType, new GameClass(), this.io!, 1000 / 30);
+    const game = new MatchManager(gameId, gameType, new GameClass(), this.io!, 1000 / 30);
     this.games.set(gameId, game);
     serverState.event.set(gameId, []);
     return true;
@@ -212,21 +227,6 @@ export class GameService implements Service {
     if (game && connection.player) {
       game.removePlayer(connection.roomId, connection.player.id);
     }
-  }
-
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
-    app.get("/api/gameManager/:gameId/rooms", this.apiListGameRooms.bind(this));
-    app.get("/api/gameManager/:gameId/:roomId/players", this.apiPlayersInGameRequest.bind(this));
-    app.get("/api/gameManager/playersInAllGames", this.apiPlayersInAllGames.bind(this));
-    app.get("/api/gameManager/playersInPerGames", this.apiPlayersInPerGames.bind(this));
-    app.get("/api/gameManager/summary", this.apiSummary.bind(this));
-    app.get("/api/gameManager/games", this.apiListGames.bind(this));
-    app.get("/api/gameManager/:gameId/players", this.apiPlayersInGame.bind(this));
-    app.get("/api/gameManager/:gameId/playTime", this.apiPlayTime.bind(this));
-    app.post("/api/gameManager/games", this.apiCreateGame.bind(this));
-    app.post("/api/gameManager/playerNotify", this.apiPlayerNotify.bind(this));
-    app.delete("/api/gameManager/:gameId", this.apiRemoveGameById.bind(this));
   }
 
   private apiListGameRooms(req: Request, res: Response): void {

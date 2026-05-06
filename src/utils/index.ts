@@ -30,12 +30,6 @@ export function isValidRoomId(roomId: string): boolean {
   return roomId === "sandbox" || roomId === "lobby" || roomId.startsWith("room");
 }
 
-/** Checks if the current day is part of the weekend (Friday to Sunday) */
-export function isWeekend(): boolean {
-  const day = new Date().getDay(); 
-  return day === 5 || day === 6 || day === 0;
-}
-
 /** Generates a random alphanumeric ID of the specified length, appended with a timestamp for uniqueness */
 export function makeId(length: number = 8): string {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

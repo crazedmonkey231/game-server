@@ -2,7 +2,8 @@ import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
 import { EventEntry, Service } from "../../types";
 import { serverState } from "../serverstate";
-import { isSafeKey, isWeekend } from "../../utils";
+import { isSafeKey } from "../../utils";
+import { millisecondsToDays, isWeekend } from "../../utils/day";
 
 const eventTickRate =  60_000; // 1 tick per minute for slow events
 
@@ -13,11 +14,12 @@ interface AutoEventConfig {
   triggerCondition: () => boolean
 }
 
+/** The EventService class manages in-game events, allowing for manual triggering and automatic events based on conditions like time or player actions. */
 export class EventService implements Service {
   name = "EventManager";
   private events: Map<string, EventEntry[]> = new Map<string, EventEntry[]>();
   private autoEvents: Record<string, AutoEventConfig> = {
-    "double-xp-weekend": { type: "double-xp-weekend", data: { xpBonus: 2 }, length: 72 * 60 * 60 * 1000, triggerCondition: isWeekend }
+    "double-xp-weekend": { type: "double-xp-weekend", data: { xpBonus: 2 }, length: millisecondsToDays(2), triggerCondition: isWeekend }
   };
 
   private eventsTimerHandle: ReturnType<typeof setInterval>;
@@ -25,6 +27,13 @@ export class EventService implements Service {
 
   constructor() {
     this.eventsTimerHandle = setInterval(this.eventUpdate.bind(this), eventTickRate);
+  }
+
+  registerRoutes(app: Application, io: IOServer): void {
+    this.io = io;
+    app.get("/api/eventManager/getEvents/:gameId", this.apiGetEvents.bind(this));
+    app.post("/api/eventManager/triggerEvent", this.apiTriggerEvent.bind(this));
+    app.delete("/api/eventManager/removeEvent/:gameId/:type", this.apiRemoveEvent.bind(this));
   }
 
   get(gameId: string): EventEntry[] {
@@ -109,13 +118,6 @@ export class EventService implements Service {
         return true;
       }) ?? []);
     }
-  }
-
-  registerRoutes(app: Application, io: IOServer): void {
-    this.io = io;
-    app.get("/api/eventManager/getEvents/:gameId", this.apiGetEvents.bind(this));
-    app.post("/api/eventManager/triggerEvent", this.apiTriggerEvent.bind(this));
-    app.delete("/api/eventManager/removeEvent/:gameId/:type", this.apiRemoveEvent.bind(this));
   }
 
   private apiGetEvents(req: Request, res: Response): void {
