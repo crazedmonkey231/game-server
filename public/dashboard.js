@@ -52,6 +52,7 @@ function updateAuthUI() {
   // Re-render dynamic tables so button states reflect current auth
   fetchActiveEvents();
   fetchGames();
+  fetchAccountInfo();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ function initTabs() {
       if (target) target.classList.add('active');
       if (btn.dataset.tab === 'leaderboard') fetchLeaderboard();
       if (btn.dataset.tab === 'games') fetchGames();
+      if (btn.dataset.tab === 'account') fetchAccountInfo();
     });
   });
 }
@@ -541,7 +543,81 @@ function renderGameRooms(container, rooms) {
   }
 }
 
-// ── Admin Login ───────────────────────────────────────────────────────────────
+// ── Account Info ──────────────────────────────────────────────────────────────
+
+const standingLabels = {
+  GREEN: 'Rookie',
+  BLUE: 'Veteran',
+  PURPLE: 'Elite',
+  ORANGE: 'Legend',
+  RED: 'Mythic',
+};
+
+async function fetchAccountInfo() {
+  if (!currentProfile) return;
+
+  // Populate overview fields from the stored profile
+  setEl('acct-name', currentProfile.name);
+  setEl('acct-id', currentProfile.id);
+  setEl('acct-created', new Date(currentProfile.createdAt).toLocaleDateString());
+  const standing = currentProfile.stats && currentProfile.stats.standing;
+  setEl('acct-standing', standing ? (standingLabels[standing] || standing) : 'Rookie');
+
+  // Populate stats fields
+  const s = currentProfile.stats || {};
+  setEl('acct-games-played', s.gamesPlayed ?? 0);
+  setEl('acct-games-won', s.gamesWon ?? 0);
+  setEl('acct-kills', s.totalKills ?? 0);
+  setEl('acct-deaths', s.totalDeaths ?? 0);
+
+  // Fetch bank portfolio
+  const tbody = document.getElementById('account-portfolio-body');
+  const totalEl = document.getElementById('account-portfolio-total');
+  if (!tbody) return;
+
+  if (!currentProfile.bankAccountId) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No bank account linked.</td></tr>';
+    if (totalEl) totalEl.textContent = '0';
+    return;
+  }
+
+  try {
+    const data = await apiFetch(`/api/bank/${encodeURIComponent(currentProfile.bankAccountId)}/portfolio`);
+    const entries = data.portfolio || [];
+    tbody.innerHTML = '';
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Portfolio is empty.</td></tr>';
+    } else {
+      const exchangeRates = {
+        credits: 1, bronze: 0.01, silver: 0.1, gold: 1,
+        platinum: 10, diamond: 100, SPO: 5, ATC: 20, RG: 50,
+      };
+      const itemLabels = {
+        credits: 'Credits', bronze: 'Bronze', silver: 'Silver', gold: 'Gold',
+        platinum: 'Platinum', diamond: 'Diamond',
+        SPO: 'Space Ore', ATC: 'Alien Tech', RG: 'Rare Gem',
+      };
+      let totalValue = 0;
+      for (const entry of entries) {
+        const rate = exchangeRates[entry.item] ?? 0;
+        const value = entry.quantity * rate;
+        totalValue += value;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(itemLabels[entry.item] || entry.item)}</td>
+          <td>${entry.quantity.toLocaleString()}</td>
+          <td>${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>`;
+        tbody.appendChild(tr);
+      }
+      if (totalEl) totalEl.textContent = totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+  } catch (e) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Failed to load portfolio.</td></tr>';
+    console.error('Failed to fetch bank portfolio', e);
+  }
+}
+
+
 
 async function login(e) {
   e.preventDefault();
@@ -604,8 +680,9 @@ function refreshAll() {
   fetchStats();
   fetchPlayerCounts();
   fetchActiveEvents();
-  // Refresh leaderboard only when its tab is visible
-  const lbPanel = document.getElementById('tab-leaderboard');
+  // Refresh account info only when its tab is visible
+  const acctPanel = document.getElementById('tab-account');
+  if (acctPanel && acctPanel.classList.contains('active')) fetchAccountInfo();
   if (lbPanel && lbPanel.classList.contains('active')) fetchLeaderboard();
   // Refresh rooms drill-down if currently visible
   const roomsCard = document.getElementById('game-rooms-card');

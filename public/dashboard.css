@@ -536,3 +536,27 @@ body.logged-in .auth-locked-notice {
   background: #fff3cd;
   color: #856404;
 }
+
+/* ── Account tab ────────────────────────────────────────────────────────────── */
+.account-card {
+  grid-column: 1 / -1;
+}
+
+.stat-value-sm {
+  font-size: 18px;
+}
+
+.stat-value-id {
+  font-size: 12px;
+  font-family: monospace;
+  word-break: break-all;
+  margin-top: 4px;
+}
+
+.portfolio-total {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #343a40;
+  text-align: right;
+}
