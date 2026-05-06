@@ -29,6 +29,7 @@
       <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
       <button class="tab-btn" data-tab="games">Games</button>
+      <button class="tab-btn" data-tab="account">Account</button>
       <button class="tab-btn" data-tab="admin">Admin</button>
     </nav>
 
@@ -185,6 +186,80 @@
           <button class="btn-close-rooms" id="close-rooms-btn" title="Close">✕</button>
         </div>
         <div id="game-rooms-body"></div>
+      </div>
+
+    </main>
+
+    <!-- ── Tab: Account ──────────────────────────────────────────────────────── -->
+    <main class="dashboard tab-panel" id="tab-account">
+
+      <!-- Locked notice (shown when not logged in) -->
+      <div class="card auth-locked-notice account-card" id="account-locked">
+        <p class="locked-msg">🔒 Log in to view your account information.</p>
+      </div>
+
+      <!-- Account Overview (shown when logged in) -->
+      <div class="card auth-only" id="account-overview-card">
+        <h2>Account Overview</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-label">Name</div>
+            <div class="stat-value stat-value-sm" id="acct-name">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Standing</div>
+            <div class="stat-value stat-value-sm" id="acct-standing">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Member Since</div>
+            <div class="stat-value stat-value-sm" id="acct-created">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Account ID</div>
+            <div class="stat-value stat-value-id" id="acct-id">–</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Stats (shown when logged in) -->
+      <div class="card auth-only" id="account-stats-card">
+        <h2>Player Stats</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-label">Games Played</div>
+            <div class="stat-value" id="acct-games-played">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Games Won</div>
+            <div class="stat-value" id="acct-games-won">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Total Kills</div>
+            <div class="stat-value" id="acct-kills">–</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Total Deaths</div>
+            <div class="stat-value" id="acct-deaths">–</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank Portfolio (shown when logged in) -->
+      <div class="card auth-only account-card" id="account-portfolio-card">
+        <h2>Bank Portfolio</h2>
+        <div id="account-portfolio-content">
+          <table>
+            <thead>
+              <tr><th>Item</th><th>Quantity</th><th>Value (Credits)</th></tr>
+            </thead>
+            <tbody id="account-portfolio-body">
+              <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+            </tbody>
+          </table>
+          <div class="portfolio-total">
+            Total Value: <span id="account-portfolio-total">–</span> Credits
+          </div>
+        </div>
       </div>
 
     </main>
