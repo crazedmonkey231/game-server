@@ -15,12 +15,12 @@ export class MatchManager {
   readonly gameId: string;
   readonly gameType: string;
   readonly instance: IGame;
-  readonly gameStates: Record<string, GameState> = {};
+  readonly gameStates: Map<string, GameState> = new Map<string, GameState>();
 
   private updateTimer: ReturnType<typeof setInterval>;
   private io: IOServer;
 
-  private pendingUpdates: Record<string, RoomUpdate> = {};
+  private pendingUpdates: Map<string, RoomUpdate> = new Map<string, RoomUpdate>();
 
   constructor(gameId: string, gameType: string, instance: IGame, io: IOServer, tickRate: number) {
     this.gameId = gameId;
@@ -39,64 +39,69 @@ export class MatchManager {
     this.io.to(getRoomName(this.gameId, roomId)).emit(message, data);
   }
 
-  addGameState(roomId: string): GameState {
-    if (!this.gameStates[roomId]) {
-      this.gameStates[roomId] = {
+  addGameState(roomId: string, players: Player[] = [], things: Thing[] = []): GameState {
+    if (!this.gameStates.has(roomId)) {
+      this.gameStates.set(roomId, {
         roomId,
         roomName: getRoomName(this.gameId, roomId),
         started: false,
         timer: 0,
         paused: false,
         gameOver: false,
-        players: {},
-        things: {},
-      };
-      this.instance.create(this.gameStates[roomId]);
-      this.pendingUpdates[roomId] = { things: [], players: [] };
+        players: players.reduce((acc, player) => {
+          acc[player.id] = player;
+          return acc;
+        }, {} as Record<string, Player>),
+        things: things.reduce((acc, thing) => {
+          acc[thing.id] = thing;
+          return acc;
+        }, {} as Record<string, Thing>),
+      });
+      this.instance.create(this.gameStates.get(roomId)!);
+      this.pendingUpdates.set(roomId, { things: [], players: [] });
     }
-    return this.gameStates[roomId];
+    return this.gameStates.get(roomId)!;
   }
 
   update(io: IOServer): void {
-    for (const roomId in this.gameStates) {
-      const currentRoomState = this.gameStates[roomId];
+    for (const [roomId, currentRoomState] of this.gameStates) {
       this.instance.update({
         delta: serverTickRate,
         time: Date.now(),
         io,
         currentRoom: currentRoomState,
-        updatedPlayers: this.pendingUpdates[roomId].players,
-        updatedThings: this.pendingUpdates[roomId].things,
+        updatedPlayers: this.pendingUpdates.get(roomId)!.players,
+        updatedThings: this.pendingUpdates.get(roomId)!.things,
       });
-      if (this.pendingUpdates[roomId].things.length > 0 || this.pendingUpdates[roomId].players.length > 0) {
+      if (this.pendingUpdates.get(roomId)!.things.length > 0 || this.pendingUpdates.get(roomId)!.players.length > 0) {
         const serverUpdate: Partial<GameState> = {
           started: currentRoomState.started,
           timer: currentRoomState.timer,
           paused: currentRoomState.paused,
           gameOver: currentRoomState.gameOver,
-          players: this.pendingUpdates[roomId].players.reduce((acc, player) => {
+          players: this.pendingUpdates.get(roomId)!.players.reduce((acc, player) => {
             acc[player.id] = player;
             return acc;
           }, {} as Record<string, Player>),
-          things: this.pendingUpdates[roomId].things.reduce((acc, thing) => {
+          things: this.pendingUpdates.get(roomId)!.things.reduce((acc, thing) => {
             acc[thing.id] = thing;
             return acc;
           }, {} as Record<string, Thing>),
         };
         io.to(currentRoomState.roomName).emit("serverUpdate", serverUpdate);
-        this.pendingUpdates[roomId] = { things: [], players: [] }; // Clear pending updates after emitting
+        this.pendingUpdates.set(roomId, { things: [], players: [] }); // Clear pending updates after emitting
       }
       if (currentRoomState.gameOver) {
         io.to(currentRoomState.roomName).emit("gameEnded", { reason: "Game Over" });
         this.movePlayersToRoom(roomId, "lobby");
         io.to(getRoomName(this.gameId, "lobby")).emit("playersMoved", { toRoom: "lobby" });
-        delete this.gameStates[roomId];
+        this.gameStates.delete(roomId);
         continue;
       }
-      if (!this.instance.isPersistent && roomId !== "lobby" && this.getPlayerCountInRoom(roomId) === 0) {
-        delete this.gameStates[roomId];
-        continue;
-      }
+      // if (!this.instance.isPersistent && roomId !== "lobby" && this.getPlayerCountInRoom(roomId) === 0) {
+      //   this.gameStates.delete(roomId);
+      //   continue;
+      // }
     }
   }
 
@@ -112,11 +117,11 @@ export class MatchManager {
         const attacker = roomState.players[attackerId];
         if (attacker) {
           attacker.score = (attacker.score || 0) + 1;
-          this.pendingUpdates[roomId].players.push(attacker);
+          this.pendingUpdates.get(roomId)!.players.push(attacker);
         }
       }
     }
-    this.pendingUpdates[roomId].players.push(target);
+    this.pendingUpdates.get(roomId)!.players.push(target);
   }
 
   destroy(): void {
@@ -124,14 +129,17 @@ export class MatchManager {
   }
 
   getGameState(roomId: string): GameState {
-    return this.gameStates[roomId];
+    return this.gameStates.get(roomId)!;
   }
 
   addPlayer(roomId: string, player: Player): void {
-    if (!this.gameStates[roomId]) this.addGameState(roomId);
-    this.pendingUpdates[roomId].players.push(player);
-    this.gameStates[roomId].players[player.id] = player;
-    this.emit(roomId, "playerJoined", { roomId, player });
+    if (!this.gameStates.has(roomId)) {
+      this.addGameState(roomId, [player]);
+    } else {
+      this.pendingUpdates.get(roomId)!.players.push(player);
+      this.gameStates.get(roomId)!.players[player.id] = player;
+    }
+    this.emit(roomId, "playerJoined", { player });
   }
 
   addAiPlayer(roomId: string): void {
@@ -149,9 +157,13 @@ export class MatchManager {
   }
 
   removePlayer(roomId: string, playerId: string): void {
-    if (!this.gameStates[roomId]) return;
-    const player = this.gameStates[roomId].players[playerId];
-    delete this.gameStates[roomId].players[playerId];
+    const gameState = this.gameStates.get(roomId);
+    if (!gameState) {
+      console.warn(`Attempted to remove player from non-existent room ${roomId} in game ${this.gameId}, GameStates:`, this.gameStates);
+      return;
+    }
+    const player = gameState.players[playerId];
+    delete gameState.players[playerId];
     this.emit(roomId, "playerLeft", { player });
     if (
       this.getPlayerCountInRoom(roomId) === 0 &&
@@ -159,14 +171,15 @@ export class MatchManager {
       !this.instance.isPersistent
     ) {
       this.emit(roomId, "roomClosed", { roomId });
-      delete this.gameStates[roomId];
+      this.gameStates.delete(roomId);
+      this.pendingUpdates.delete(roomId);
     }
   }
 
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
-    this.pendingUpdates[roomId].things.push(thing);
-    this.gameStates[roomId].things[thing.id] = thing;
+    this.pendingUpdates.get(roomId)!.things.push(thing);
+    this.gameStates.get(roomId)!.things[thing.id] = thing;
     this.emit(roomId, "thingAdded", { thing });
   }
 
@@ -177,16 +190,20 @@ export class MatchManager {
   }
 
   getPlayers(roomId: string): Player[] {
-    const players = this.getGameState(roomId).players;
-    return Object.keys(players).map((playerId) => players[playerId]);
+    const roomState = this.gameStates.get(roomId);
+    if (!roomState) {
+      console.warn(`Attempted to get players for non-existent room ${roomId} in game ${this.gameId}`);
+      return [];
+    }
+    return Object.values(roomState.players);
   }
 
   getPlayersNoAi(roomId: string): Player[] {
-    return this.getPlayers(roomId).filter((p) => p.userData.isAi === false);
+    return this.getPlayers(roomId).filter((p) => p.isAi === false);
   }
 
   getPlayersAiOnly(roomId: string): Player[] {
-    return this.getPlayers(roomId).filter((p) => p.userData.isAi === true);
+    return this.getPlayers(roomId).filter((p) => p.isAi === true);
   }
 
   getPlayerCountInRoom(roomId: string): number {
@@ -195,7 +212,7 @@ export class MatchManager {
 
   getPlayerCountPerRoom(): Record<string, number> {
     const counts: Record<string, number> = {};
-    for (const roomId in this.gameStates) {
+    for (const roomId of this.gameStates.keys()) {
       counts[roomId] = this.getPlayers(roomId).length;
     }
     return counts;
@@ -203,7 +220,7 @@ export class MatchManager {
 
   getPlayerCount(): number {
     let count = 0;
-    for (const roomId in this.gameStates) {
+    for (const roomId of this.gameStates.keys()) {
       count += this.getPlayers(roomId).length;
     }
     return count;
@@ -217,29 +234,22 @@ export class MatchManager {
     return this.totalPlayTime;
   }
 
-  movePlayersToRoom(fromRoomId: string, toRoomId: string): void {
-    const fromRoom = this.addGameState(fromRoomId);
-    const toRoom = this.addGameState(toRoomId);
-    for (const playerId in fromRoom.players) {
-      const player = fromRoom.players[playerId];
-      player.score = 0;
-      if (player.userData.isAi) {
-        delete fromRoom.players[playerId];
-        continue;
-      }
-      toRoom.players[playerId] = player;
-      delete fromRoom.players[playerId];
-      this.emit(fromRoomId, "playerLeft", { player });
-      this.emit(toRoomId, "playerJoined", { player });
+  movePlayersToRoom(fromRoomId: string, toRoomId: string, playerId?: string): void {
+    const playersToMove = playerId ? [this.getPlayers(fromRoomId).find(p => p.id === playerId)].filter(Boolean) : this.getPlayers(fromRoomId);
+    for (const player of playersToMove) {
+      if (!player) continue;
+      this.removePlayer(fromRoomId, player.id);
+      this.addPlayer(toRoomId, player);
     }
   }
 
   deleteRoom(roomId: string): void {
     this.emit(roomId, "roomClosed", { roomId });
-    delete this.gameStates[roomId];
+    this.gameStates.delete(roomId);
+    this.pendingUpdates.delete(roomId);
   }
 
   hasRoom(roomId: string): boolean {
-    return !!this.gameStates[roomId];
+    return this.gameStates.has(roomId);
   }
 }

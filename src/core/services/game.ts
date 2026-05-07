@@ -1,6 +1,6 @@
 import type { Application, Request, Response } from "express";
 import type { Server as IOServer } from "socket.io";
-import { GameState, IGame, Service, Transform } from "../../types";
+import { GameState, IGame, Player, Service, Transform } from "../../types";
 import { BasicGame } from "../../games/BasicGame";
 import { BlankGame } from "../../games/BlankGame";
 import { MatchManager } from "../roomcontroller";
@@ -25,8 +25,8 @@ interface SpawnThingRequest {
 }
 
 interface ChangeRoomRequest {
+  playerSession: PlayerSession;
   gameId: string;
-  oldRoomId: string;
   newRoomId: string;
 }
 
@@ -129,6 +129,7 @@ export class GameService implements Service {
     }
     const socketRoomId = getRoomName(gameId, roomId);
     connectionInfo.socket.join(socketRoomId);
+    connectionInfo.roomId = roomId;
     const player = getPlayer(connectionInfo.socket.id, "Player", isAi);
     connectionInfo.player = player;
     game.addPlayer(roomId, player);
@@ -139,6 +140,8 @@ export class GameService implements Service {
     const game = this.games.get(connectionInfo.gameId);
     if (game && connectionInfo.player) {
       game.removePlayer(connectionInfo.roomId, connectionInfo.player.id);
+      connectionInfo.socket.leave(getRoomName(connectionInfo.gameId, connectionInfo.roomId));
+      connectionInfo.roomId = "";
     }
   }
 
@@ -162,12 +165,10 @@ export class GameService implements Service {
     }
   }
 
-  changeRoom(request: ChangeRoomRequest): void {
-    const { gameId, oldRoomId, newRoomId } = request;
-    const game = this.games.get(gameId);
-    if (game) {
-      game.movePlayersToRoom(oldRoomId, newRoomId);
-    }
+  relocatePlayer(request: ChangeRoomRequest): void {
+    const { playerSession, gameId, newRoomId } = request;
+    this.leave(playerSession);
+    this.join(gameId, newRoomId, playerSession, playerSession.player?.isAi ?? false);
   }
 
   getGameState(gameId: string, roomId: string): GameState | null {
@@ -177,7 +178,7 @@ export class GameService implements Service {
     }
     return null;
   }
-
+  
   listGameRooms(gameId: string): unknown[] {
     const game = this.games.get(gameId);
     if (!game) {
@@ -189,12 +190,9 @@ export class GameService implements Service {
       paused: state.paused,
       gameOver: state.gameOver,
       timer: state.timer,
-      playerCount: Object.values(state.players).filter((p) => p.userData.isAi !== true).length,
+      playerCount: Object.values(state.players).length,
       thingCount: Object.keys(state.things).length,
-      players: Object.values(state.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-      })),
+      players: Object.values(state.players)
     }));
     return rooms;
   }
@@ -244,8 +242,8 @@ export class GameService implements Service {
       res.status(404).json({ error: "Game not found" });
       return;
     }
-    const rooms = Object.entries(game.gameStates).map(([roomId, state]) => ({
-      roomId,
+    const rooms = Array.from(game.gameStates.values()).map((state) => ({
+      roomId: state.roomId,
       started: state.started,
       paused: state.paused,
       gameOver: state.gameOver,
@@ -280,7 +278,7 @@ export class GameService implements Service {
   private apiPlayersInPerGames(_req: Request, res: Response): void {
     const counts: Record<string, number> = {};
     for (const [gameId, game] of this.games.entries()) {
-      counts[gameId] = game.getPlayerCount();
+      counts[gameId] = this.getPlayerCount(gameId);
     }
     res.json({ playerCounts: counts });
   }
@@ -288,8 +286,8 @@ export class GameService implements Service {
   private apiSummary(_req: Request, res: Response): void {
     let totalPlayers = 0;
     let activeGames = 0;
-    for (const [gameId, game] of this.games.entries()) {
-      const playerCount = game.getPlayerCount();
+    for (const gameId of this.games.keys()) {
+      const playerCount = this.getPlayerCount(gameId);
       if (playerCount > 0) {
         activeGames += 1;
         totalPlayers += playerCount;

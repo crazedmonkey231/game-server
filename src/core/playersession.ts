@@ -47,9 +47,8 @@ export class PlayerSession {
 
     // Listen for room change requests and move the player to the new room
     socket.on("changeRoom", (newRoomId: string) => {
-      const oldRoomId = this.roomId;
-      this.roomId = newRoomId;
-      serverState.game.changeRoom({ gameId: this.gameId, oldRoomId, newRoomId });
+      if (!this.player) return;
+      serverState.game.relocatePlayer({ gameId: this.gameId, playerSession: this, newRoomId });
     });
 
     // Listen for requests to get active events for the current game
@@ -104,7 +103,7 @@ export class PlayerSession {
     // Listen for requests to list all rooms in the current game
     socket.on("listGameRooms", () => {
         const rooms = serverState.game.listGameRooms(this.gameId);
-        socket.emit("gameRooms", rooms);
+        socket.emit("gameRoomsList", rooms);
     });
 
     // Listen for request for total players in the current game
