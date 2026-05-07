@@ -59,8 +59,12 @@ export class GameService implements Service {
     app.get("/api/gameManager/games", this.apiListGames.bind(this));
     app.get("/api/gameManager/:gameId/players", this.apiPlayersInGame.bind(this));
     app.get("/api/gameManager/:gameId/playTime", this.apiPlayTime.bind(this));
+
     app.post("/api/gameManager/games", this.apiCreateGame.bind(this));
     app.post("/api/gameManager/playerNotify", this.apiPlayerNotify.bind(this));
+    app.post("/api/gameManager/:gameId/:roomId/addThing", this.apiAddThing.bind(this));
+    app.post("/api/gameManager/:gameId/:roomId/addAiPlayer", this.apiAddPlayerAi.bind(this));
+
     app.delete("/api/gameManager/:gameId", this.apiRemoveGameById.bind(this));
   }
 
@@ -366,6 +370,39 @@ export class GameService implements Service {
     }
     game.destroy();
     this.games.delete(gameId);
+    res.json({ success: true });
+  }
+
+  private apiAddThing(req: Request, res: Response): void {
+    const gameId = req.params.gameId as string;
+    const roomId = req.params.roomId as string;
+    const { thingType, transform, tags } = req.body as { thingType: string; transform: Transform; tags?: string[] };
+    const game = this.games.get(gameId);
+    if (!game) {
+      res.status(404).json({ error: "Game not found" });
+      return;
+    }
+    const thing = getThing(`${thingType}_${Date.now()}`, thingType, thingType, tags);
+    if (!thing) {
+      res.status(400).json({ error: "Invalid thingType" });
+      return;
+    }
+    thing.transform = transform;
+    game.addThing(roomId, thing);
+    res.json({ success: true });
+  }
+
+  private apiAddPlayerAi(req: Request, res: Response): void {
+    const gameId = req.params.gameId as string;
+    const roomId = req.params.roomId as string;
+    const game = this.games.get(gameId);
+    if (!game) {
+      res.status(404).json({ error: "Game not found" });
+      return;
+    }
+    const playerId = `AiPlayer_${Date.now()}`;
+    const player = getPlayer(playerId, "AI Player", true);
+    game.addPlayer(roomId, player);
     res.json({ success: true });
   }
 }
