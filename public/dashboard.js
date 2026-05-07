@@ -155,7 +155,7 @@ async function fetchActiveEvents() {
     }
     const results = await Promise.all(
       data.games.map((game) =>
-        apiFetch(`/api/eventManager/getEvents/${game.gameId}`).then((d) => ({ gameId: game.gameId, events: d.events || [] }))
+        apiFetch(`/api/eventManager/events/${game.gameId}`).then((d) => ({ gameId: game.gameId, events: d.events || [] }))
       )
     );
     let hasAny = false;

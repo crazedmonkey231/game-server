@@ -130,6 +130,14 @@ export class GameService implements Service {
     game.addPlayer(roomId, player);
   }
 
+  leave(connectionInfo: PlayerSession): void {
+    this.accumulatePlayTime(connectionInfo);
+    const game = this.games.get(connectionInfo.gameId);
+    if (game && connectionInfo.player) {
+      game.removePlayer(connectionInfo.roomId, connectionInfo.player.id);
+    }
+  }
+
   damage(request: DamageRequest): void {
     const { gameId, roomId, playerId, targetId, amount } = request;
     const game = this.games.get(gameId);
@@ -218,14 +226,6 @@ export class GameService implements Service {
         const accountAgeSeconds = (Date.now() - new Date(account.createdAt).getTime()) / 1000;
         game.addPlayTime(accountAgeSeconds);
       }
-    }
-  }
-
-  removePlayerFromGame(connection: PlayerSession): void {
-    this.accumulatePlayTime(connection);
-    const game = this.games.get(connection.gameId);
-    if (game && connection.player) {
-      game.removePlayer(connection.roomId, connection.player.id);
     }
   }
 

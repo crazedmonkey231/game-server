@@ -31,7 +31,8 @@ export class EventService implements Service {
 
   registerRoutes(app: Application, io: IOServer): void {
     this.io = io;
-    app.get("/api/eventManager/getEvents/:gameId", this.apiGetEvents.bind(this));
+    app.get("/api/eventManager/events/:gameId", this.apiEvents.bind(this));
+    app.get("/api/eventManager/events/:gameId/auto", this.apiAutoEvents.bind(this));
     app.post("/api/eventManager/triggerEvent", this.apiTriggerEvent.bind(this));
     app.delete("/api/eventManager/removeEvent/:gameId/:type", this.apiRemoveEvent.bind(this));
   }
@@ -120,7 +121,7 @@ export class EventService implements Service {
     }
   }
 
-  private apiGetEvents(req: Request, res: Response): void {
+  private apiEvents(req: Request, res: Response): void {
     const gameId = req.params.gameId as string;
     if (!isSafeKey(gameId)) {
       res.status(400).json({ error: "Invalid gameId" });
@@ -157,6 +158,10 @@ export class EventService implements Service {
 
     this.triggerEvent(gameId, type, length, data);
     res.json({ success: true });
+  }
+
+  private apiAutoEvents(req: Request, res: Response): void {
+    res.json({ autoEvents: Object.values(this.autoEvents).map(({ type, data, length }) => ({ type, data, length })) });
   }
 
   private apiRemoveEvent(req: Request, res: Response): void {

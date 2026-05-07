@@ -45,7 +45,7 @@ export class ConnectionService implements Service {
   deleteConnection(socketId: string): void {
     const connection = this.connections.get(socketId);
     if (connection) {
-      serverState.game.removePlayerFromGame(connection);
+      serverState.game.leave(connection);
       connection.socket.disconnect(true);
       this.connections.delete(socketId);
       serverState.accounts.deleteAccount(socketId);
