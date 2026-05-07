@@ -227,7 +227,7 @@ export class MatchManager {
   }
 
   addPlayTime(delta: number): void {
-    this.totalPlayTime += delta / 1000; // Convert milliseconds to seconds
+    this.totalPlayTime += delta;
   }
 
   getPlayTime(): number {
