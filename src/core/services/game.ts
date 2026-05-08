@@ -24,6 +24,14 @@ interface SpawnThingRequest {
   tags?: string[];
 }
 
+interface UpdateThingRequest {
+  gameId: string;
+  roomId: string;
+  thingId: string;
+  transform?: Transform;
+  tags?: string[];
+}
+
 interface ChangeRoomRequest {
   playerSession: PlayerSession;
   gameId: string;
@@ -64,6 +72,7 @@ export class GameService implements Service {
     app.post("/api/gameManager/playerNotify", this.apiPlayerNotify.bind(this));
     app.post("/api/gameManager/:gameId/:roomId/addThing", this.apiAddThing.bind(this));
     app.post("/api/gameManager/:gameId/:roomId/addAiPlayer", this.apiAddPlayerAi.bind(this));
+    app.post("/api/gameManager/:gameId/:roomId/updateThing", this.apiUpdateThing.bind(this));
 
     app.delete("/api/gameManager/:gameId", this.apiRemoveGameById.bind(this));
   }
@@ -162,6 +171,14 @@ export class GameService implements Service {
         thing.transform = transform;
         game.addThing(roomId, thing);
       }
+    }
+  }
+
+  updateThing(request: UpdateThingRequest): void {
+    const { gameId, roomId, thingId, transform, tags } = request;
+    const game = this.games.get(gameId);
+    if (game && game.hasRoom(roomId)) {
+      game.updateThing(roomId, thingId, transform, tags);
     }
   }
 
@@ -401,6 +418,30 @@ export class GameService implements Service {
     const playerId = `AiPlayer_${Date.now()}`;
     const player = getPlayer(playerId, "AI Player", true);
     game.addPlayer(roomId, player);
+    res.json({ success: true });
+  }
+
+  private apiUpdateThing(req: Request, res: Response): void {
+    const gameId = req.params.gameId as string;
+    const roomId = req.params.roomId as string;
+    const thingId = req.body.thingId as string;
+    const { transform, tags } = req.body as { transform?: Transform; tags?: string[] };
+    const game = this.games.get(gameId);
+    if (!game) {
+      res.status(404).json({ error: "Game not found" });
+      return;
+    }
+    const gameState = game.getGameState(roomId);
+    if (!gameState) {
+      res.status(404).json({ error: "Room not found" });
+      return;
+    }
+    const thing = gameState.things[thingId];
+    if (!thing) {
+      res.status(404).json({ error: "Thing not found" });
+      return;
+    }
+    this.updateThing({ gameId, roomId, thingId, transform, tags });
     res.json({ success: true });
   }
 }

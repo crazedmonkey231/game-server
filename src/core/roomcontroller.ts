@@ -1,4 +1,4 @@
-import { IGame, GameState, Thing, Player } from "../types";
+import { IGame, GameState, Thing, Player, Transform } from "../types";
 import { getPlayer, getRoomName } from "../utils";
 import type { Server as IOServer } from "socket.io";
 import { serverTickRate } from "./gameserver";
@@ -179,7 +179,6 @@ export class MatchManager {
   addThing(roomId: string, thing: Thing): void {
     this.getGameState(roomId).things[thing.id] = thing;
     this.pendingUpdates.get(roomId)!.things.push(thing);
-    this.gameStates.get(roomId)!.things[thing.id] = thing;
     this.emit(roomId, "thingAdded", { thing });
   }
 
@@ -187,6 +186,23 @@ export class MatchManager {
     const thing = this.getGameState(roomId).things[thingId];
     delete this.getGameState(roomId).things[thingId];
     this.emit(roomId, "thingRemoved", { thing });
+  }
+
+  updateThing(roomId: string, thingId: string, transform?: Transform, tags?: string[]): void {
+    const thing = this.getGameState(roomId).things[thingId];
+    if (!thing) {
+      console.warn(`Attempted to update non-existent thing ${thingId} in room ${roomId} of game ${this.gameId}`);
+      return;
+    }
+    if (transform) {
+      thing.transform = transform;
+    }
+    if (tags) {
+      thing.tags = tags;
+    }
+    this.pendingUpdates.get(roomId)!.things.push(thing);
+    this.gameStates.get(roomId)!.things[thingId] = thing;
+    this.emit(roomId, "thingUpdated", { thing });
   }
 
   getPlayers(roomId: string): Player[] {
